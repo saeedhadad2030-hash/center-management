@@ -41,14 +41,9 @@ export default function Sidebar({ currentPage, onPageChange, user, onLogout, col
   const filteredItems = menuItems.filter(item => item.roles.includes(user.role));
 
   const roleLabel = user.role === 'admin' ? 'مدير النظام' : user.role === 'employee' ? 'موظف' : 'مدرس';
-  const closeMobileMenu = (event: React.SyntheticEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    onClose?.();
-  };
 
   return (
-    <aside className={`fixed top-0 right-0 h-full bg-gradient-to-b from-primary-900 to-primary-800 text-white ${isMobile ? 'z-50 w-[min(88vw,22rem)] max-w-sm' : `z-40 ${collapsed ? 'w-20' : 'w-64'}`} shadow-2xl flex flex-col transition-all duration-300`}>
+    <aside className={`${isMobile ? 'relative w-full h-full' : 'fixed top-0 right-0 h-full'} bg-gradient-to-b from-primary-900 to-primary-800 text-white ${isMobile ? '' : `z-40 ${collapsed ? 'w-20' : 'w-64'}`} shadow-2xl flex flex-col transition-all duration-300`}>
       {/* Header */}
       <div className="p-4 border-b border-primary-700">
         <div className="flex items-center gap-3">
@@ -64,11 +59,8 @@ export default function Sidebar({ currentPage, onPageChange, user, onLogout, col
           {isMobile && (
             <button
               type="button"
-              onClick={closeMobileMenu}
-              onMouseDown={closeMobileMenu}
-              onPointerDown={closeMobileMenu}
-              onTouchStart={closeMobileMenu}
-              className="mr-auto w-11 h-11 rounded-xl bg-white/10 hover:bg-white/15 flex items-center justify-center transition pointer-events-auto"
+              onClick={() => onClose?.()}
+              className="mr-auto w-11 h-11 rounded-xl bg-white/10 hover:bg-white/15 active:bg-white/25 flex items-center justify-center transition"
               aria-label="إغلاق القائمة"
             >
               <X size={20} />
