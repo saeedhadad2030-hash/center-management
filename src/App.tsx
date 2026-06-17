@@ -221,7 +221,11 @@ export default function App() {
 
       {/* Mobile Overlay */}
       {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileMenuOpen(false)} />
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setMobileMenuOpen(false)}
+          onPointerDown={() => setMobileMenuOpen(false)}
+        />
       )}
 
       {/* Sidebar - Desktop */}

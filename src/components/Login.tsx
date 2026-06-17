@@ -190,8 +190,16 @@ export default function Login({ onLogin, onParentPortal }: LoginProps) {
 
       {/* Public Schedule Modal */}
       {showSchedule && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowSchedule(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in" onClick={e => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowSchedule(false)}
+          onPointerDown={() => setShowSchedule(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in"
+            onClick={e => e.stopPropagation()}
+            onPointerDown={e => e.stopPropagation()}
+          >
             {/* Header */}
             <div className="bg-gradient-to-l from-primary-700 to-primary-600 text-white p-6">
               <div className="flex items-center justify-between">
@@ -204,7 +212,17 @@ export default function Login({ onLogin, onParentPortal }: LoginProps) {
                     <p className="text-primary-200 text-sm">تصفح جميع المواد والمجموعات المتاحة</p>
                   </div>
                 </div>
-                <button onClick={() => setShowSchedule(false)} className="p-2 hover:bg-white/20 rounded-xl transition">
+                <button
+                  type="button"
+                  onClick={() => setShowSchedule(false)}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowSchedule(false);
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-xl transition"
+                  aria-label="إغلاق"
+                >
                   <X size={22} />
                 </button>
               </div>

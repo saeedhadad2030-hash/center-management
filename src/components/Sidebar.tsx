@@ -41,6 +41,11 @@ export default function Sidebar({ currentPage, onPageChange, user, onLogout, col
   const filteredItems = menuItems.filter(item => item.roles.includes(user.role));
 
   const roleLabel = user.role === 'admin' ? 'مدير النظام' : user.role === 'employee' ? 'موظف' : 'مدرس';
+  const closeMobileMenu = (event: React.SyntheticEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onClose?.();
+  };
 
   return (
     <aside className={`fixed top-0 right-0 h-full bg-gradient-to-b from-primary-900 to-primary-800 text-white ${isMobile ? 'z-50 w-[min(88vw,22rem)] max-w-sm' : `z-40 ${collapsed ? 'w-20' : 'w-64'}`} shadow-2xl flex flex-col transition-all duration-300`}>
@@ -59,7 +64,8 @@ export default function Sidebar({ currentPage, onPageChange, user, onLogout, col
           {isMobile && (
             <button
               type="button"
-              onClick={onClose}
+              onClick={closeMobileMenu}
+              onPointerDown={closeMobileMenu}
               className="mr-auto w-10 h-10 rounded-xl bg-white/10 hover:bg-white/15 flex items-center justify-center transition"
               aria-label="إغلاق القائمة"
             >

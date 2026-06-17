@@ -24,6 +24,11 @@
   font-family: 'Cairo', sans-serif;
 }
 
+button,
+a {
+  touch-action: manipulation;
+}
+
 body {
   background-color: #f1f5f9;
   direction: rtl;
