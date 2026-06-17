@@ -232,7 +232,7 @@ export default function Teachers() {
                 <p className="text-sm text-blue-800">{showAccountForm.name}</p>
               </div>
               <p className="text-sm text-gray-600 leading-6">
-                لإنشاء حساب آمن للمدرس، أنشئ المستخدم من Supabase Auth ثم أضف صفا في جدول profiles بالدور teacher وضع teacher_id الخاص بهذا المدرس.
+                لإنشاء حساب دخول لهذا المدرس، افتح صفحة المستخدمين واضغط إضافة مستخدم ثم اختر صلاحية مدرس واربط الحساب بهذا المدرس.
               </p>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowAccountForm(null)} className="px-6 py-2.5 bg-gray-100 text-gray-600 rounded-xl font-medium hover:bg-gray-200 transition">

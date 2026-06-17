@@ -331,7 +331,7 @@ export default function Settings({ onPageChange }: SettingsProps) {
               <h4 className="font-bold text-blue-800">مدير النظام (admin)</h4>
             </div>
             <p className="text-sm text-blue-700">وصول كامل لجميع الأقسام - إدارة الطلاب والمجموعات والمدفوعات والامتحانات والإعدادات والمالية</p>
-            <p className="text-xs text-blue-500 mt-1">الحسابات تدار من Supabase Auth</p>
+            <p className="text-xs text-blue-500 mt-1">الحسابات تدار من صفحة المستخدمين</p>
           </div>
 
           <div className="p-4 bg-green-50 rounded-xl">
@@ -340,7 +340,7 @@ export default function Settings({ onPageChange }: SettingsProps) {
               <h4 className="font-bold text-green-800">موظف (employee)</h4>
             </div>
             <p className="text-sm text-green-700">إدارة الطلاب والمجموعات والحضور والمدفوعات والرسائل</p>
-            <p className="text-xs text-green-500 mt-1">الحسابات تدار من Supabase Auth</p>
+            <p className="text-xs text-green-500 mt-1">الحسابات تدار من صفحة المستخدمين</p>
           </div>
 
           <div className="p-4 bg-amber-50 rounded-xl">
@@ -349,7 +349,7 @@ export default function Settings({ onPageChange }: SettingsProps) {
               <h4 className="font-bold text-amber-800">مدرس (teacher)</h4>
             </div>
             <p className="text-sm text-amber-700">عرض لوحة التحكم والمجموعات والحضور والامتحانات فقط</p>
-            <p className="text-xs text-amber-500 mt-1">اربط حساب المدرس من جدول profiles باستخدام teacher_id</p>
+            <p className="text-xs text-amber-500 mt-1">اربط حساب المدرس من صفحة المستخدمين</p>
           </div>
         </div>
       </div>

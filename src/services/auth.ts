@@ -46,7 +46,7 @@ export async function getSupabaseCurrentUser(): Promise<User | null> {
 
 export async function signInWithSupabase(email: string, password: string): Promise<User> {
   if (!isSupabaseConfigured) {
-    throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+    throw new Error('إعدادات الاتصال غير مكتملة. تواصل مع مدير النظام.');
   }
 
   const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({

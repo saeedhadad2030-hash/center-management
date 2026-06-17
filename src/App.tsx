@@ -113,10 +113,6 @@ export default function App() {
     );
   }
 
-  if (!user) {
-    return <Login onLogin={handleLogin} />;
-  }
-
   // Parent portal is a standalone page
   if (currentPage === 'parent-portal') {
     return (
@@ -125,11 +121,15 @@ export default function App() {
           onClick={() => setCurrentPage('dashboard')}
           className="fixed top-4 left-4 z-50 px-4 py-2 bg-white shadow-lg rounded-xl text-sm font-medium hover:bg-gray-50 transition"
         >
-          ← العودة للوحة التحكم
+          ← {user ? 'العودة للوحة التحكم' : 'العودة لتسجيل الدخول'}
         </button>
         <ParentPortal />
       </div>
     );
+  }
+
+  if (!user) {
+    return <Login onLogin={handleLogin} onParentPortal={() => setCurrentPage('parent-portal')} />;
   }
 
   const renderPage = () => {

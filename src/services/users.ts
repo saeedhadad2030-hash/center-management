@@ -44,7 +44,7 @@ async function callUsersFunction<T>(name: string, body?: unknown): Promise<T> {
 
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
-    throw new Error('إدارة المستخدمين تحتاج Netlify Functions. شغل المشروع باستخدام netlify dev أو جرّبها بعد النشر على Netlify.');
+    throw new Error('خدمة إدارة المستخدمين غير متاحة الآن. تأكد من إعداد النشر ثم حاول مرة أخرى.');
   }
 
   const payload = await response.json().catch(() => ({}));
@@ -58,7 +58,7 @@ async function callUsersFunction<T>(name: string, body?: unknown): Promise<T> {
 export async function listManagedUsers(): Promise<ManagedUser[]> {
   const result = await callUsersFunction<{ users: ManagedUser[] }>('users-list');
   if (!Array.isArray(result.users)) {
-    throw new Error('استجابة المستخدمين غير صالحة. تأكد أن Netlify Functions تعمل.');
+    throw new Error('تعذر تحميل قائمة المستخدمين. حاول مرة أخرى لاحقا.');
   }
   return result.users;
 }

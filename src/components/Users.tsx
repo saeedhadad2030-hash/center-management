@@ -141,15 +141,11 @@ export default function Users() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">إدارة المستخدمين</h1>
-          <p className="text-gray-500 text-sm mt-1">إضافة وتعديل حسابات Supabase Auth من داخل الموقع</p>
+          <p className="text-gray-500 text-sm mt-1">إضافة وتعديل حسابات العاملين في النظام</p>
         </div>
         <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition text-sm">
           <Plus size={16} /> إضافة مستخدم
         </button>
-      </div>
-
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-        ضع `SUPABASE_SERVICE_ROLE_KEY` في Netlify Environment Variables فقط. لا تضفه في ملف `.env` الخاص بالواجهة ولا تستخدم بادئة `VITE_`.
       </div>
 
       {error && (

@@ -101,19 +101,6 @@ export default function Sidebar({ currentPage, onPageChange, user, onLogout, col
         </ul>
       </nav>
 
-      {/* Parent Portal Link */}
-      {!collapsed && (
-        <div className="px-3 pb-2">
-          <button
-            onClick={() => onPageChange('parent-portal')}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-green-300 hover:bg-green-500/20 transition"
-          >
-            <GraduationCap size={18} />
-            <span className="text-sm font-medium">بوابة ولي الأمر</span>
-          </button>
-        </div>
-      )}
-
       {/* Logout */}
       <div className="p-3 border-t border-primary-700">
         <button

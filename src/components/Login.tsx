@@ -2,10 +2,11 @@ import { useState, useMemo } from 'react';
 import { getTeachers, getGroups, getSettings } from '../store';
 import { signInWithSupabase } from '../services/auth';
 import { User, Teacher, Group } from '../types';
-import { GraduationCap, Lock, User as UserIcon, BookOpen, X, Clock, Calendar, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { GraduationCap, Lock, User as UserIcon, BookOpen, X, Clock, Calendar, ChevronDown, ChevronUp, Users, UserRoundSearch } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (user: User) => void;
+  onParentPortal: () => void;
 }
 
 // Public schedule data grouped by specialization
@@ -17,7 +18,7 @@ interface SpecializationGroup {
   }[];
 }
 
-export default function Login({ onLogin }: LoginProps) {
+export default function Login({ onLogin, onParentPortal }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -129,6 +130,15 @@ export default function Login({ onLogin }: LoginProps) {
             <span>تصفح المدرسين والمواعيد</span>
           </button>
 
+          <button
+            type="button"
+            onClick={onParentPortal}
+            className="w-full mb-6 flex items-center justify-center gap-2 px-4 py-3 bg-white border border-primary-200 text-primary-700 rounded-xl font-semibold hover:bg-primary-50 transition-all"
+          >
+            <UserRoundSearch size={20} />
+            <span>بوابة ولي الأمر</span>
+          </button>
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">البريد الإلكتروني</label>
@@ -170,12 +180,6 @@ export default function Login({ onLogin }: LoginProps) {
               {submitting ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
             </button>
           </form>
-
-          <div className="mt-6 p-4 bg-gray-50 rounded-xl">
-            <p className="text-xs text-gray-500 text-center">
-              الحسابات تدار من Supabase Auth. أنشئ المستخدم ثم أضف بياناته في جدول profiles.
-            </p>
-          </div>
         </div>
       </div>
 
