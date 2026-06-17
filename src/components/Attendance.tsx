@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getStudents, getGroups, addAttendance, getAttendanceByDate, getCurrentUser, getStudentsByGroup } from '../store';
+import { getStudents, getGroups, addAttendance, removeAttendance, getAttendanceByDate, getCurrentUser, getStudentsByGroup } from '../store';
 import { Student, Group, Attendance as AttendanceType } from '../types';
 import { exportToCSV } from '../utils/export';
 import { Check, X as XIcon, Clock, Download, Printer, ClipboardCheck, Search } from 'lucide-react';
@@ -65,12 +65,18 @@ export default function Attendance() {
     const groupId = selectedGroup || student?.group_id;
     if (!groupId) return;
 
-    addAttendance({
-      student_id: studentId,
-      group_id: groupId,
-      date,
-      status,
-    });
+    const currentStatus = getStudentStatus(studentId);
+    if (currentStatus === status) {
+      // Toggle off - remove the attendance record
+      removeAttendance(studentId, groupId, date);
+    } else {
+      addAttendance({
+        student_id: studentId,
+        group_id: groupId,
+        date,
+        status,
+      });
+    }
     setTodayAttendance(getAttendanceByDate(date));
   };
 

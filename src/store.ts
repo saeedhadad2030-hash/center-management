@@ -1,5 +1,5 @@
 import { Student, Group, Attendance, Payment, Exam, ExamResult, Message, User, Teacher, Expense, AuditLog, StudentSubscription, StudentEnrollment, Notification, AcademicYear, TeacherPayment, TeacherStats } from './types';
-import { isSupabaseConfigured } from './lib/supabase';
+import { isSupabaseConfigured, supabase } from './lib/supabase';
 
 const KEYS = {
   students: 'center_students',
@@ -22,9 +22,63 @@ const KEYS = {
 };
 
 let currentUserCache: User | null = null;
+let suppressCloudSync = false;
+
+const TABLE_BY_KEY: Partial<Record<string, string>> = {
+  [KEYS.academicYears]: 'academic_years',
+  [KEYS.teachers]: 'teachers',
+  [KEYS.groups]: 'groups',
+  [KEYS.students]: 'students',
+  [KEYS.enrollments]: 'enrollments',
+  [KEYS.attendance]: 'attendance',
+  [KEYS.payments]: 'payments',
+  [KEYS.subscriptions]: 'subscriptions',
+  [KEYS.expenses]: 'expenses',
+  [KEYS.teacherPayments]: 'teacher_payments',
+  [KEYS.exams]: 'exams',
+  [KEYS.examResults]: 'exam_results',
+  [KEYS.messages]: 'messages',
+  [KEYS.auditLogs]: 'audit_logs',
+};
+
+const SYNC_TABLES = [
+  { key: KEYS.academicYears, table: 'academic_years' },
+  { key: KEYS.teachers, table: 'teachers' },
+  { key: KEYS.groups, table: 'groups' },
+  { key: KEYS.students, table: 'students' },
+  { key: KEYS.enrollments, table: 'enrollments' },
+  { key: KEYS.attendance, table: 'attendance' },
+  { key: KEYS.payments, table: 'payments' },
+  { key: KEYS.subscriptions, table: 'subscriptions' },
+  { key: KEYS.expenses, table: 'expenses' },
+  { key: KEYS.teacherPayments, table: 'teacher_payments' },
+  { key: KEYS.exams, table: 'exams' },
+  { key: KEYS.examResults, table: 'exam_results' },
+  { key: KEYS.messages, table: 'messages' },
+  { key: KEYS.auditLogs, table: 'audit_logs' },
+] as const;
+
+const UUID_FIELDS = new Set([
+  'id',
+  'teacher_id',
+  'user_id',
+  'academic_year_id',
+  'student_id',
+  'group_id',
+  'recorded_by',
+  'payment_id',
+  'exam_id',
+  'user_id',
+  'entity_id',
+]);
 
 function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c =>
+    (Number(c) ^ (Math.random() * 16 >> (Number(c) / 4))).toString(16)
+  );
 }
 
 function getItems<T>(key: string): T[] {
@@ -36,8 +90,104 @@ function getItems<T>(key: string): T[] {
   }
 }
 
+function isCloudReady(): boolean {
+  return isSupabaseConfigured && !!currentUserCache;
+}
+
+function cleanDbRow<T extends Record<string, unknown>>(row: T): Record<string, unknown> {
+  const clean: Record<string, unknown> = {};
+  Object.entries(row).forEach(([field, value]) => {
+    if (value === undefined) return;
+    if (UUID_FIELDS.has(field) && value === '') {
+      clean[field] = null;
+      return;
+    }
+    clean[field] = value;
+  });
+  return clean;
+}
+
+function writeLocal<T>(key: string, value: T): void {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function queueCloudSync<T>(key: string, previousItems: T[], nextItems: T[]): void {
+  const table = TABLE_BY_KEY[key];
+  if (!table || suppressCloudSync || !isCloudReady()) return;
+
+  void (async () => {
+    try {
+      const rows = nextItems.map(item => cleanDbRow(item as Record<string, unknown>));
+      if (rows.length > 0) {
+        const { error } = await supabase.from(table).upsert(rows, { onConflict: 'id' });
+        if (error) throw error;
+      }
+
+      const nextIds = new Set(rows.map(row => row.id).filter(Boolean));
+      const removedIds = previousItems
+        .map(item => (item as Record<string, unknown>).id)
+        .filter((id): id is string => typeof id === 'string' && !nextIds.has(id));
+
+      if (removedIds.length > 0) {
+        const { error } = await supabase.from(table).delete().in('id', removedIds);
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.warn(`Supabase sync failed for ${table}`, error);
+    }
+  })();
+}
+
 function setItems<T>(key: string, items: T[]): void {
-  localStorage.setItem(key, JSON.stringify(items));
+  const previousItems = getItems<T>(key);
+  writeLocal(key, items);
+  queueCloudSync(key, previousItems, items);
+}
+
+export async function loadSupabaseData(): Promise<void> {
+  if (!isCloudReady()) return;
+
+  suppressCloudSync = true;
+  try {
+    for (const { key, table } of SYNC_TABLES) {
+      const { data, error } = await supabase.from(table).select('*');
+      if (error) {
+        console.warn(`Supabase load failed for ${table}`, error);
+      } else {
+        writeLocal(key, data || []);
+      }
+    }
+
+    const { data: settings, error: settingsError } = await supabase
+      .from('settings')
+      .select('hidden_teachers,hidden_groups,center_name,center_phone,center_address')
+      .eq('id', 1)
+      .maybeSingle();
+    if (settingsError) {
+      console.warn('Supabase settings load failed', settingsError);
+    } else if (settings) {
+      writeLocal(KEYS.settings, {
+        hiddenTeachers: settings.hidden_teachers || [],
+        hiddenGroups: settings.hidden_groups || [],
+        centerName: settings.center_name || undefined,
+        centerPhone: settings.center_phone || undefined,
+        centerAddress: settings.center_address || undefined,
+      });
+    }
+  } finally {
+    suppressCloudSync = false;
+  }
+}
+
+export async function syncLocalDataToSupabase(): Promise<void> {
+  if (!isCloudReady()) return;
+
+  for (const { key, table } of SYNC_TABLES) {
+    const rows = getItems<Record<string, unknown>>(key).map(cleanDbRow);
+    if (rows.length === 0) continue;
+    const { error } = await supabase.from(table).upsert(rows, { onConflict: 'id' });
+    if (error) throw error;
+  }
 }
 
 // Settings (public schedule visibility)
@@ -60,6 +210,22 @@ export function getSettings(): CenterSettings {
 
 export function saveSettings(settings: CenterSettings): void {
   localStorage.setItem(KEYS.settings, JSON.stringify(settings));
+  if (isCloudReady()) {
+    void supabase
+      .from('settings')
+      .upsert({
+        id: 1,
+        hidden_teachers: settings.hiddenTeachers || [],
+        hidden_groups: settings.hiddenGroups || [],
+        center_name: settings.centerName || null,
+        center_phone: settings.centerPhone || null,
+        center_address: settings.centerAddress || null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' })
+      .then(({ error }) => {
+        if (error) console.warn('Supabase settings sync failed', error);
+      });
+  }
 }
 
 // Academic Years
@@ -530,6 +696,13 @@ export function addAttendance(record: Omit<Attendance, 'id'>): Attendance {
   records.push(newRecord);
   setItems(KEYS.attendance, records);
   return newRecord;
+}
+
+export function removeAttendance(studentId: string, groupId: string, date: string): void {
+  const records = getAttendance().filter(
+    r => !(r.student_id === studentId && r.group_id === groupId && r.date === date)
+  );
+  setItems(KEYS.attendance, records);
 }
 
 export function recordQRAttendance(studentId: string, groupId: string): { success: boolean; message: string } {

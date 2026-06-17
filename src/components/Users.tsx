@@ -99,7 +99,7 @@ export default function Users() {
       return;
     }
     if (form.role === 'teacher' && !form.teacher_id) {
-      setError('يجب ربط المستخدم بمدرس.');
+      setError('يجب ربط المستخدم بمدرس عند اختيار دور مدرس.');
       return;
     }
 
@@ -111,7 +111,7 @@ export default function Users() {
         password: form.password,
         name: form.name.trim(),
         role: form.role,
-        teacher_id: form.role === 'teacher' ? form.teacher_id : '',
+        teacher_id: form.teacher_id || '',
         is_active: form.is_active,
       };
 
@@ -299,7 +299,7 @@ export default function Users() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">الصلاحية *</label>
-                  <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value as UserRole, teacher_id: e.target.value === 'teacher' ? form.teacher_id : '' })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+                  <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value as UserRole })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
                     <option value="admin">مدير</option>
                     <option value="employee">موظف</option>
                     <option value="teacher">مدرس</option>
@@ -314,17 +314,25 @@ export default function Users() {
                 </div>
               </div>
 
-              {form.role === 'teacher' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">ربط بمدرس *</label>
-                  <select required value={form.teacher_id} onChange={e => setForm({ ...form, teacher_id: e.target.value })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
-                    <option value="">اختر المدرس</option>
-                    {teachers.map(teacher => (
-                      <option key={teacher.id} value={teacher.id}>{teacher.name} - {teacher.specialization}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ربط بمدرس {form.role === 'teacher' ? '*' : '(اختياري)'}
+                </label>
+                <select
+                  required={form.role === 'teacher'}
+                  value={form.teacher_id}
+                  onChange={e => setForm({ ...form, teacher_id: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white"
+                >
+                  <option value="">اختر المدرس</option>
+                  {teachers.map(teacher => (
+                    <option key={teacher.id} value={teacher.id}>{teacher.name} - {teacher.specialization}</option>
+                  ))}
+                </select>
+                {form.role !== 'teacher' && (
+                  <p className="text-xs text-gray-400 mt-1">يمكنك ربط الموظف أو المدير بمدرس للوصول لبياناته</p>
+                )}
+              </div>
 
               {editing?.id === currentUser?.id && (
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-700 flex items-start gap-2">

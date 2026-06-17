@@ -58,8 +58,10 @@ export function normalizeRole(role) {
 }
 
 export function normalizeTeacherId(role, teacherId) {
-  if (role !== 'teacher') return null;
-  return teacherId || null;
+  if (role !== 'teacher' && role !== 'employee' && role !== 'admin') return null;
+  // Always return null for empty/falsy values to avoid UUID cast errors in Supabase
+  if (!teacherId || typeof teacherId !== 'string' || !teacherId.trim()) return null;
+  return teacherId.trim();
 }
 
 export async function requireAdmin(event) {

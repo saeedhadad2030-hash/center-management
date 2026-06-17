@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User, Page } from './types';
-import { setCurrentUser } from './store';
+import { loadSupabaseData, setCurrentUser } from './store';
 import { getSupabaseCurrentUser, signOutFromSupabase } from './services/auth';
 import Login from './components/Login';
 import Sidebar from './components/Sidebar';
@@ -64,9 +64,13 @@ export default function App() {
     let cancelled = false;
 
     getSupabaseCurrentUser()
-      .then(savedUser => {
+      .then(async savedUser => {
         if (cancelled) return;
         setCurrentUser(savedUser);
+        if (savedUser) {
+          await loadSupabaseData();
+          if (cancelled) return;
+        }
         setUser(savedUser);
       })
       .finally(() => {
@@ -92,9 +96,15 @@ export default function App() {
     };
   }, [mobileMenuOpen]);
 
-  const handleLogin = (u: User) => {
-    setUser(u);
+  const handleLogin = async (u: User) => {
+    setLoading(true);
     setCurrentUser(u);
+    try {
+      await loadSupabaseData();
+      setUser(u);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = async () => {
