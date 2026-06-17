@@ -65,8 +65,10 @@ export default function Sidebar({ currentPage, onPageChange, user, onLogout, col
             <button
               type="button"
               onClick={closeMobileMenu}
+              onMouseDown={closeMobileMenu}
               onPointerDown={closeMobileMenu}
-              className="mr-auto w-10 h-10 rounded-xl bg-white/10 hover:bg-white/15 flex items-center justify-center transition"
+              onTouchStart={closeMobileMenu}
+              className="mr-auto w-11 h-11 rounded-xl bg-white/10 hover:bg-white/15 flex items-center justify-center transition pointer-events-auto"
               aria-label="إغلاق القائمة"
             >
               <X size={20} />

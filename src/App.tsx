@@ -26,7 +26,7 @@ import QRAttendance from './components/QRAttendance';
 import TeacherDashboard from './components/TeacherDashboard';
 import AdminPaymentOverview from './components/AdminPaymentOverview';
 import ResponsiveTables from './components/ResponsiveTables';
-import { Menu } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 const pageRoles: Record<Page, User['role'][]> = {
   dashboard: ['admin', 'employee', 'teacher'],
@@ -109,6 +109,10 @@ export default function App() {
     else if (type === 'group') setCurrentPage('groups');
     else if (type === 'teacher') setCurrentPage('teachers');
     else if (type === 'user') setCurrentPage('users');
+  };
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
   };
 
   if (loading) {
@@ -223,9 +227,25 @@ export default function App() {
       {mobileMenuOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/50 z-40"
-          onClick={() => setMobileMenuOpen(false)}
-          onPointerDown={() => setMobileMenuOpen(false)}
+          onClick={closeMobileMenu}
+          onMouseDown={closeMobileMenu}
+          onPointerDown={closeMobileMenu}
+          onTouchStart={closeMobileMenu}
         />
+      )}
+
+      {mobileMenuOpen && (
+        <button
+          type="button"
+          className="lg:hidden fixed top-3 left-3 z-[70] w-11 h-11 rounded-full bg-white text-primary-800 shadow-xl flex items-center justify-center"
+          onClick={closeMobileMenu}
+          onMouseDown={closeMobileMenu}
+          onPointerDown={closeMobileMenu}
+          onTouchStart={closeMobileMenu}
+          aria-label="إغلاق القائمة"
+        >
+          <X size={22} />
+        </button>
       )}
 
       {/* Sidebar - Desktop */}
@@ -241,16 +261,22 @@ export default function App() {
       </div>
 
       {/* Sidebar - Mobile */}
-      <div className={`lg:hidden fixed top-0 right-0 h-full z-50 transition-transform duration-300 ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div
+        className={`lg:hidden fixed top-0 right-0 h-full z-50 transition-transform duration-300 ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        onClick={event => event.stopPropagation()}
+        onMouseDown={event => event.stopPropagation()}
+        onPointerDown={event => event.stopPropagation()}
+        onTouchStart={event => event.stopPropagation()}
+      >
         <Sidebar
           currentPage={currentPage}
-          onPageChange={p => { setCurrentPage(p); setMobileMenuOpen(false); }}
+          onPageChange={p => { setCurrentPage(p); closeMobileMenu(); }}
           user={user}
           onLogout={handleLogout}
           collapsed={false}
           onToggle={() => {}}
           isMobile
-          onClose={() => setMobileMenuOpen(false)}
+          onClose={closeMobileMenu}
         />
       </div>
 
