@@ -39,8 +39,25 @@ export default function QRAttendance() {
     try {
       if (scannerRef.current) {
         try { await scannerRef.current.stop(); } catch {}
+        scannerRef.current = null;
       }
-      
+
+      // First make the container visible so html5-qrcode can measure it
+      setCameraActive(true);
+
+      // Wait for DOM to update and the container to be visible
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const readerElement = document.getElementById('qr-reader');
+      if (!readerElement) {
+        console.error('qr-reader element not found');
+        setCameraActive(false);
+        return;
+      }
+
+      // Clear any leftover content from previous scanner instances
+      readerElement.innerHTML = '';
+
       const scanner = new Html5Qrcode('qr-reader');
       scannerRef.current = scanner;
       
@@ -58,10 +75,9 @@ export default function QRAttendance() {
           // QR code scan error - ignore, keep scanning
         }
       );
-      
-      setCameraActive(true);
     } catch (err) {
       console.error('Camera error:', err);
+      setCameraActive(false);
       alert('لم يتم العثور على كاميرا أو تم رفض الإذن. تأكد من السماح باستخدام الكاميرا.');
     }
   }, [selectedGroup, students]);
@@ -214,9 +230,9 @@ export default function QRAttendance() {
         {/* Camera view */}
         <div
           ref={scannerContainerRef}
-          className={`relative overflow-hidden rounded-2xl bg-gray-900 ${cameraActive ? 'block' : 'hidden'}`}
+          className={`relative overflow-hidden rounded-2xl bg-gray-900 transition-all duration-300 ${cameraActive ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}
         >
-          <div id="qr-reader" className="w-full" style={{ minHeight: cameraActive ? '300px' : '0' }}></div>
+          <div id="qr-reader" className="w-full" style={{ minHeight: '300px' }}></div>
           {cameraActive && (
             <div className="absolute bottom-3 left-0 right-0 text-center">
               <span className="bg-black/60 text-white text-xs px-4 py-1.5 rounded-full animate-pulse">

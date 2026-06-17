@@ -79,8 +79,31 @@ export default function Users() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setError('');
+
+    // Validate required fields
+    if (!form.name.trim()) {
+      setError('الاسم مطلوب.');
+      return;
+    }
+    if (!form.email.trim()) {
+      setError('الإيميل مطلوب.');
+      return;
+    }
+    if (!editing && !form.password) {
+      setError('كلمة المرور مطلوبة.');
+      return;
+    }
+    if (!editing && form.password.length < 6) {
+      setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل.');
+      return;
+    }
+    if (form.role === 'teacher' && !form.teacher_id) {
+      setError('يجب ربط المستخدم بمدرس.');
+      return;
+    }
+
+    setSaving(true);
 
     try {
       const payload = {
@@ -101,7 +124,9 @@ export default function Users() {
       resetForm();
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'فشل حفظ المستخدم.');
+      console.error('User save error:', err);
+      const message = err instanceof Error ? err.message : 'فشل حفظ المستخدم.';
+      setError(message);
     } finally {
       setSaving(false);
     }
@@ -238,6 +263,11 @@ export default function Users() {
               <button onClick={resetForm} className="p-1 hover:bg-gray-100 rounded-lg"><X size={20} /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">الاسم *</label>
