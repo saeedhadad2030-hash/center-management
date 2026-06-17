@@ -486,6 +486,16 @@ export function deleteEnrollment(studentId: string, groupId: string): void {
   setItems(KEYS.enrollments, enrollments);
 }
 
+export function removeStudentFromGroup(studentId: string, groupId: string): void {
+  const student = getStudentById(studentId);
+  deleteEnrollment(studentId, groupId);
+
+  if (student?.group_id === groupId) {
+    const remainingGroups = getGroupsForStudent(studentId).filter(g => g.id !== groupId);
+    updateStudent(studentId, { group_id: remainingGroups[0]?.id || '' });
+  }
+}
+
 export function getEnrollmentsByStudent(studentId: string): StudentEnrollment[] {
   return getEnrollments().filter(e => e.student_id === studentId);
 }

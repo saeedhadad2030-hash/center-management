@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Student } from '../types';
-import { getStudents, addStudent, updateStudent, deleteStudent, getGroups, getAttendanceByStudent, getPaymentsByStudent, getCurrentAcademicYear, promoteStudents, graduateStudents, archiveStudents, getCurrentUser, getStudentsByGroup, getTeacherGroups, addEnrollment, getGroupsForStudent } from '../store';
+import { getStudents, addStudent, updateStudent, deleteStudent, getGroups, getAttendanceByStudent, getPaymentsByStudent, getCurrentAcademicYear, promoteStudents, graduateStudents, archiveStudents, getCurrentUser, getStudentsByGroup, getTeacherGroups, addEnrollment, getGroupsForStudent, getEnrollmentsByStudent, deleteEnrollment, removeStudentFromGroup } from '../store';
 import { generateQRCode, generateStudentQRData } from '../utils/qrcode';
 import { exportToCSV } from '../utils/export';
 import { Plus, Search, Edit2, Trash2, QrCode, Eye, Download, Printer, X, Camera, UserCircle, GraduationCap, Archive, ArrowUp, Layers } from 'lucide-react';
@@ -21,6 +21,7 @@ export default function Students() {
   const [bulkActionType, setBulkActionType] = useState<'promote' | 'graduate' | 'archive'>('promote');
   const [newGrade, setNewGrade] = useState('');
   const [newGroupId, setNewGroupId] = useState('');
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
 
   const user = getCurrentUser();
   const isTeacher = user?.role === 'teacher';
@@ -57,24 +58,35 @@ export default function Students() {
     return matchSearch && matchGroup && matchStatus;
   });
 
+  const syncStudentGroups = (studentId: string, nextGroupIds: string[]) => {
+    const uniqueGroupIds = Array.from(new Set(nextGroupIds.filter(Boolean)));
+    const primaryGroupId = uniqueGroupIds[0] || '';
+    updateStudent(studentId, { group_id: primaryGroupId });
+
+    const existingEnrollments = getEnrollmentsByStudent(studentId);
+    existingEnrollments.forEach(enrollment => {
+      if (!uniqueGroupIds.includes(enrollment.group_id)) {
+        deleteEnrollment(studentId, enrollment.group_id);
+      }
+    });
+    uniqueGroupIds.forEach(groupId => addEnrollment(studentId, groupId));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const currentYear = getCurrentAcademicYear();
+    const groupIds = selectedGroupIds.length > 0 ? selectedGroupIds : (form.group_id ? [form.group_id] : []);
+    const primaryGroupId = groupIds[0] || '';
     if (editingStudent) {
-      updateStudent(editingStudent.id, form);
-      // If group changed, update enrollment
-      if (form.group_id && form.group_id !== editingStudent.group_id) {
-        addEnrollment(editingStudent.id, form.group_id);
-      }
+      updateStudent(editingStudent.id, { ...form, group_id: primaryGroupId });
+      syncStudentGroups(editingStudent.id, groupIds);
     } else {
-      const newStudent = addStudent({ ...form, academic_year_id: currentYear?.id || '' });
-      // Also create enrollment for the group
-      if (form.group_id) {
-        addEnrollment(newStudent.id, form.group_id);
-      }
+      const newStudent = addStudent({ ...form, group_id: primaryGroupId, academic_year_id: currentYear?.id || '' });
+      syncStudentGroups(newStudent.id, groupIds);
     }
     setShowForm(false);
     setEditingStudent(null);
+    setSelectedGroupIds([]);
     setForm({ name: '', phone: '', parent_phone: '', grade: '', group_id: '', notes: '', photo: '', status: 'active', academic_year_id: '' });
     refresh();
   };
@@ -86,7 +98,33 @@ export default function Students() {
       grade: student.grade, group_id: student.group_id, notes: student.notes, photo: student.photo,
       status: student.status, academic_year_id: student.academic_year_id,
     });
+    setSelectedGroupIds(getGroupsForStudent(student.id).map(g => g.id));
     setShowForm(true);
+  };
+
+  const openNewStudentForm = () => {
+    const defaultGroups = isTeacher && groups.length === 1 ? [groups[0].id] : [];
+    setEditingStudent(null);
+    setSelectedGroupIds(defaultGroups);
+    setForm({
+      name: '',
+      phone: '',
+      parent_phone: '',
+      grade: '',
+      group_id: defaultGroups[0] || '',
+      notes: '',
+      photo: '',
+      status: 'active',
+      academic_year_id: '',
+    });
+    setShowForm(true);
+  };
+
+  const handleRemoveFromGroup = (student: Student, groupId: string) => {
+    removeStudentFromGroup(student.id, groupId);
+    const updatedStudent = getStudents().find(s => s.id === student.id) || null;
+    setViewStudent(updatedStudent);
+    refresh();
   };
 
   const handleDelete = (id: string) => {
@@ -206,7 +244,7 @@ export default function Students() {
           <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition text-sm">
             <Download size={16} /> تصدير
           </button>
-          <button onClick={() => { setEditingStudent(null); setForm({ name: '', phone: '', parent_phone: '', grade: '', group_id: isTeacher && groups.length === 1 ? groups[0].id : '', notes: '', photo: '', status: 'active', academic_year_id: '' }); setShowForm(true); }}
+          <button onClick={openNewStudentForm}
             className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition text-sm">
             <Plus size={16} /> إضافة طالب
           </button>
@@ -381,8 +419,29 @@ export default function Students() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">المجموعة</label>
+                  <div className="max-h-36 overflow-y-auto border border-gray-200 rounded-xl p-2 space-y-1">
+                    {groups.map(g => (
+                      <label key={g.id} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer text-sm ${selectedGroupIds.includes(g.id) ? 'bg-primary-50 text-primary-700' : 'hover:bg-gray-50'}`}>
+                        <input
+                          type="checkbox"
+                          checked={selectedGroupIds.includes(g.id)}
+                          onChange={() => {
+                            const nextIds = selectedGroupIds.includes(g.id)
+                              ? selectedGroupIds.filter(id => id !== g.id)
+                              : [...selectedGroupIds, g.id];
+                            setSelectedGroupIds(nextIds);
+                            setForm(current => ({ ...current, group_id: nextIds[0] || '' }));
+                          }}
+                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        <span>{g.name}</span>
+                      </label>
+                    ))}
+                    {groups.length === 0 && <p className="text-xs text-gray-400 p-2">لا توجد مجموعات متاحة</p>}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">يمكن اختيار أكثر من مجموعة. أول مجموعة تصبح الأساسية.</p>
                   <select value={form.group_id} onChange={e => setForm({ ...form, group_id: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none bg-white">
+                    className="hidden">
                     <option value="">اختر المجموعة</option>
                     {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                   </select>
@@ -442,6 +501,16 @@ export default function Students() {
                   {getGroupsForStudent(viewStudent.id).map(g => (
                     <span key={g.id} className="text-xs bg-primary-50 text-primary-700 px-3 py-1.5 rounded-lg flex items-center gap-1">
                       <Layers size={12} /> {g.name}
+                      {!isTeacher && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFromGroup(viewStudent, g.id)}
+                          className="mr-1 text-red-500 hover:text-red-700"
+                          title="حذف من هذه المجموعة"
+                        >
+                          ×
+                        </button>
+                      )}
                     </span>
                   ))}
                 </div>

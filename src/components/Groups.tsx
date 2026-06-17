@@ -10,8 +10,8 @@ import {
   getStudentsByGroup,
   getStudents,
   addEnrollment,
-  deleteEnrollment,
   getEnrollmentsByGroup,
+  removeStudentFromGroup,
 } from '../store';
 import { Plus, Edit2, Trash2, Users, X, Clock, Calendar, UserPlus, UserMinus } from 'lucide-react';
 
@@ -117,11 +117,7 @@ export default function Groups() {
 
   const handleRemoveStudentFromGroup = (student: Student) => {
     if (!showStudents) return;
-    if (student.group_id === showStudents.id) {
-      alert('لا يمكن حذف الطالب من مجموعته الأساسية من هنا. عدّل مجموعة الطالب من صفحة الطلاب.');
-      return;
-    }
-    deleteEnrollment(student.id, showStudents.id);
+    removeStudentFromGroup(student.id, showStudents.id);
     refresh();
   };
 
@@ -356,7 +352,7 @@ export default function Groups() {
                               <p className="font-medium text-sm truncate">{s.name}</p>
                               <p className="text-xs text-gray-500">{s.phone}</p>
                             </div>
-                            {!isTeacher && enrollmentStudentIds.has(s.id) && s.group_id !== showStudents.id && (
+                            {!isTeacher && (enrollmentStudentIds.has(s.id) || s.group_id === showStudents.id) && (
                               <button
                                 type="button"
                                 onClick={() => handleRemoveStudentFromGroup(s)}
