@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Student } from '../types';
 import { getStudentByParentPhone, getGroups, getAttendanceByStudent, getPaymentsByStudent, getExamResults, getExams, getSubscriptions } from '../store';
 import { Phone, Calendar, CreditCard, FileText, Clock, CheckCircle, XCircle, AlertTriangle, GraduationCap, LogOut } from 'lucide-react';
+import DeveloperCredit from './DeveloperCredit';
 
 export default function ParentPortal() {
   const [phone, setPhone] = useState('');
@@ -72,6 +73,10 @@ export default function ParentPortal() {
 
             <div className="mt-6 p-4 bg-gray-50 rounded-xl text-center">
               <p className="text-xs text-gray-500">أدخل رقم الهاتف المسجل في بيانات الطالب</p>
+            </div>
+
+            <div className="mt-3">
+              <DeveloperCredit />
             </div>
           </div>
         </div>
@@ -297,6 +302,8 @@ export default function ParentPortal() {
             </div>
           </>
         )}
+
+        <DeveloperCredit />
       </main>
     </div>
   );

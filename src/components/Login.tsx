@@ -3,6 +3,7 @@ import { getTeachers, getGroups, getSettings } from '../store';
 import { signInWithSupabase } from '../services/auth';
 import { User, Teacher, Group } from '../types';
 import { GraduationCap, Lock, User as UserIcon, BookOpen, X, Clock, Calendar, ChevronDown, ChevronUp, Users, UserRoundSearch } from 'lucide-react';
+import DeveloperCredit from './DeveloperCredit';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -180,6 +181,10 @@ export default function Login({ onLogin, onParentPortal }: LoginProps) {
               {submitting ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
             </button>
           </form>
+
+          <div className="mt-6">
+            <DeveloperCredit />
+          </div>
         </div>
       </div>
 

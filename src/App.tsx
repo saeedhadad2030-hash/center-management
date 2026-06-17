@@ -25,6 +25,7 @@ import AcademicYears from './components/AcademicYears';
 import QRAttendance from './components/QRAttendance';
 import TeacherDashboard from './components/TeacherDashboard';
 import AdminPaymentOverview from './components/AdminPaymentOverview';
+import ResponsiveTables from './components/ResponsiveTables';
 import { Menu } from 'lucide-react';
 
 const pageRoles: Record<Page, User['role'][]> = {
@@ -82,6 +83,14 @@ export default function App() {
       setCurrentPage('dashboard');
     }
   }, [currentPage, user]);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileMenuOpen ? 'hidden' : '';
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
 
   const handleLogin = (u: User) => {
     setUser(u);
@@ -186,14 +195,20 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-slate-100 overflow-x-hidden">
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 right-0 left-0 bg-white shadow-sm z-30 px-4 py-3 flex items-center justify-between">
-        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 hover:bg-gray-100 rounded-xl">
+      <div className="lg:hidden fixed top-0 right-0 left-0 bg-white shadow-sm z-30 px-3 py-2.5 flex items-center justify-between gap-2">
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="w-11 h-11 flex items-center justify-center hover:bg-gray-100 rounded-xl flex-shrink-0"
+          aria-label="فتح القائمة"
+        >
           <Menu size={22} />
         </button>
-        <h1 className="font-bold text-primary-800">{pageTitle[currentPage]}</h1>
-        <NotificationsBell onNavigate={(p) => setCurrentPage(p as Page)} />
+        <h1 className="font-bold text-primary-800 text-base truncate min-w-0">{pageTitle[currentPage]}</h1>
+        <div className="flex-shrink-0">
+          <NotificationsBell onNavigate={(p) => setCurrentPage(p as Page)} />
+        </div>
       </div>
 
       {/* Desktop Header */}
@@ -230,12 +245,15 @@ export default function App() {
           onLogout={handleLogout}
           collapsed={false}
           onToggle={() => {}}
+          isMobile
+          onClose={() => setMobileMenuOpen(false)}
         />
       </div>
 
       {/* Main Content */}
       <main className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:mr-20' : 'lg:mr-64'} pt-16 lg:pt-20`}>
-        <div className="p-4 lg:p-6">
+        <div className="px-3 py-4 sm:p-4 lg:p-6 max-w-full">
+          <ResponsiveTables page={currentPage} />
           {renderPage()}
         </div>
       </main>

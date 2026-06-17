@@ -2,8 +2,9 @@ import { Page, User } from '../types';
 import {
   LayoutDashboard, Users, Layers, ClipboardCheck, CreditCard,
   FileText, MessageSquare, Settings, LogOut, GraduationCap, ChevronLeft,
-  UserCheck, Wallet, PieChart, DollarSign, BarChart3, UserCog, Calendar, QrCode, Eye
+  UserCheck, Wallet, PieChart, DollarSign, BarChart3, UserCog, Calendar, QrCode, Eye, X
 } from 'lucide-react';
+import DeveloperCredit from './DeveloperCredit';
 
 interface SidebarProps {
   currentPage: Page;
@@ -12,6 +13,8 @@ interface SidebarProps {
   onLogout: () => void;
   collapsed: boolean;
   onToggle: () => void;
+  isMobile?: boolean;
+  onClose?: () => void;
 }
 
 const menuItems: { page: Page; label: string; icon: React.ReactNode; roles: string[] }[] = [
@@ -34,13 +37,13 @@ const menuItems: { page: Page; label: string; icon: React.ReactNode; roles: stri
   { page: 'settings', label: 'الإعدادات', icon: <Settings size={20} />, roles: ['admin'] },
 ];
 
-export default function Sidebar({ currentPage, onPageChange, user, onLogout, collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ currentPage, onPageChange, user, onLogout, collapsed, onToggle, isMobile = false, onClose }: SidebarProps) {
   const filteredItems = menuItems.filter(item => item.roles.includes(user.role));
 
   const roleLabel = user.role === 'admin' ? 'مدير النظام' : user.role === 'employee' ? 'موظف' : 'مدرس';
 
   return (
-    <aside className={`fixed top-0 right-0 h-full bg-gradient-to-b from-primary-900 to-primary-800 text-white z-40 transition-all duration-300 ${collapsed ? 'w-20' : 'w-64'} shadow-2xl flex flex-col`}>
+    <aside className={`fixed top-0 right-0 h-full bg-gradient-to-b from-primary-900 to-primary-800 text-white ${isMobile ? 'z-50 w-[min(88vw,22rem)] max-w-sm' : `z-40 ${collapsed ? 'w-20' : 'w-64'}`} shadow-2xl flex flex-col transition-all duration-300`}>
       {/* Header */}
       <div className="p-4 border-b border-primary-700">
         <div className="flex items-center gap-3">
@@ -53,16 +56,29 @@ export default function Sidebar({ currentPage, onPageChange, user, onLogout, col
               <p className="text-primary-300 text-xs">نظام إدارة متكامل</p>
             </div>
           )}
+          {isMobile && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="mr-auto w-10 h-10 rounded-xl bg-white/10 hover:bg-white/15 flex items-center justify-center transition"
+              aria-label="إغلاق القائمة"
+            >
+              <X size={20} />
+            </button>
+          )}
         </div>
       </div>
 
       {/* Toggle Button */}
-      <button
-        onClick={onToggle}
-        className="absolute -left-3 top-20 w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center hover:bg-primary-500 transition shadow-lg"
-      >
-        <ChevronLeft size={14} className={`transition-transform ${collapsed ? 'rotate-180' : ''}`} />
-      </button>
+      {!isMobile && (
+        <button
+          onClick={onToggle}
+          className="absolute -left-3 top-20 w-7 h-7 bg-primary-600 rounded-full flex items-center justify-center hover:bg-primary-500 transition shadow-lg"
+          aria-label={collapsed ? 'فتح القائمة' : 'طي القائمة'}
+        >
+          <ChevronLeft size={15} className={`transition-transform ${collapsed ? 'rotate-180' : ''}`} />
+        </button>
+      )}
 
       {/* User Info */}
       {!collapsed && (
@@ -71,8 +87,8 @@ export default function Sidebar({ currentPage, onPageChange, user, onLogout, col
             <div className="w-9 h-9 bg-primary-500 rounded-full flex items-center justify-center text-sm font-bold">
               {user.name.charAt(0)}
             </div>
-            <div>
-              <p className="font-medium text-sm">{user.name}</p>
+            <div className="min-w-0">
+              <p className="font-medium text-sm truncate">{user.name}</p>
               <p className="text-primary-300 text-xs">{roleLabel}</p>
             </div>
           </div>
@@ -86,7 +102,7 @@ export default function Sidebar({ currentPage, onPageChange, user, onLogout, col
             <li key={item.page}>
               <button
                 onClick={() => onPageChange(item.page)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+                className={`w-full flex items-center gap-3 px-3 ${isMobile ? 'py-3' : 'py-2.5'} rounded-xl transition-all ${
                   currentPage === item.page
                     ? 'bg-white/15 text-white shadow-lg'
                     : 'text-primary-200 hover:bg-white/10 hover:text-white'
@@ -103,9 +119,14 @@ export default function Sidebar({ currentPage, onPageChange, user, onLogout, col
 
       {/* Logout */}
       <div className="p-3 border-t border-primary-700">
+        {!collapsed && (
+          <div className="mb-2">
+            <DeveloperCredit variant="dark" compact />
+          </div>
+        )}
         <button
           onClick={onLogout}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-300 hover:bg-red-500/20 hover:text-red-200 transition ${collapsed ? 'justify-center' : ''}`}
+          className={`w-full flex items-center gap-3 px-3 ${isMobile ? 'py-3' : 'py-2.5'} rounded-xl text-red-300 hover:bg-red-500/20 hover:text-red-200 transition ${collapsed ? 'justify-center' : ''}`}
         >
           <LogOut size={20} />
           {!collapsed && <span className="text-sm font-medium">تسجيل الخروج</span>}
