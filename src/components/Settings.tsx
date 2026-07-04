@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { exportAllData, importAllData, getAuditLogs, getTeachers, getGroups, getSettings, saveSettings, CenterSettings } from '../store';
+import { exportAllData, importAllData, getAuditLogs, getTeachers, getGroups, getSettings, saveSettings, CenterSettings, getStudents, getPayments, getExpenses, getTeacherPayments, getAttendance } from '../store';
 import { AuditLog, Teacher, Group, Page } from '../types';
 import { Download, Upload, Shield, Database, RefreshCw, CheckCircle, AlertTriangle, History, User, Clock, BookOpen, Eye, EyeOff, Layers, UserCheck, Info } from 'lucide-react';
 
@@ -16,6 +16,8 @@ export default function Settings({ onPageChange }: SettingsProps) {
   const [allGroups, setAllGroups] = useState<Group[]>([]);
   const [settings, setSettingsState] = useState<CenterSettings>({ hiddenTeachers: [], hiddenGroups: [] });
   const [settingsSaved, setSettingsSaved] = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [clearStep, setClearStep] = useState<'confirm' | 'generating' | 'done'>('confirm');
 
   const refresh = useCallback(() => {
     setAuditLogs(getAuditLogs());
@@ -54,12 +56,119 @@ export default function Settings({ onPageChange }: SettingsProps) {
   };
 
   const handleClearData = () => {
-    if (confirm('⚠️ هل أنت متأكد من حذف جميع البيانات؟ لا يمكن التراجع عن هذا الإجراء!')) {
-      if (confirm('تأكيد نهائي: سيتم حذف جميع البيانات بشكل دائم!')) {
-        localStorage.clear();
+    setClearStep('confirm');
+    setShowClearModal(true);
+  };
+
+  const generateFinancialPDF = () => {
+    const payments = getPayments();
+    const expenses = getExpenses();
+    const teacherPayments = getTeacherPayments();
+    const students = getStudents();
+    const attendance = getAttendance();
+
+    const totalRevenue = payments.reduce((s, p) => s + p.amount, 0);
+    const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+    const totalTeacherPay = teacherPayments.reduce((s, t) => s + t.amount, 0);
+    const netProfit = totalRevenue - totalExpenses - totalTeacherPay;
+
+    const payRows = payments.slice(0, 100).map((p, i) => {
+      const student = students.find(s => s.id === p.student_id);
+      return `<tr><td>${i+1}</td><td>${student?.name || '—'}</td><td>${p.amount.toLocaleString()} ج.م</td><td>${p.month || '—'}</td><td>${p.date}</td></tr>`;
+    }).join('');
+
+    const expRows = expenses.slice(0, 100).map((e, i) =>
+      `<tr><td>${i+1}</td><td>${e.description}</td><td>${e.amount.toLocaleString()} ج.م</td><td>${e.category || '—'}</td><td>${e.date}</td></tr>`
+    ).join('');
+
+    const teacherRows = teacherPayments.slice(0, 50).map((t, i) => {
+      const teacher = getTeachers().find(tc => tc.id === t.teacher_id);
+      return `<tr><td>${i+1}</td><td>${teacher?.name || '—'}</td><td>${t.amount.toLocaleString()} ج.م</td><td>${t.month}</td></tr>`;
+    }).join('');
+
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>التقرير المالي الشامل</title>
+      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+      <style>
+        * { font-family: 'Cairo', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        body { padding: 20px; background: #f8fafc; color: #1e293b; }
+        .header { background: linear-gradient(135deg,#1e3a8a,#2563eb); color: white; padding: 24px; border-radius: 12px; margin-bottom: 20px; text-align: center; }
+        .header h1 { font-size: 22px; font-weight: 800; }
+        .header p { font-size: 12px; opacity: .8; margin-top: 4px; }
+        .summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+        .card { background: white; border-radius: 10px; padding: 16px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .card .val { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+        .card .lbl { font-size: 11px; color: #64748b; }
+        .green { color: #16a34a; } .red { color: #dc2626; } .blue { color: #2563eb; } .purple { color: #7c3aed; }
+        section { background: white; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        section h2 { font-size: 14px; font-weight: 700; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; color: #1e3a8a; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { background: #1e3a8a; color: white; padding: 8px; text-align: right; }
+        td { border: 1px solid #e2e8f0; padding: 7px 8px; }
+        tr:nth-child(even) td { background: #f8fafc; }
+        .footer { text-align: center; margin-top: 20px; font-size: 11px; color: #94a3b8; }
+        @media print { body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+      </style></head><body>
+      <div class="header">
+        <h1>📊 التقرير المالي الشامل للسنتر</h1>
+        <p>تاريخ التصدير: ${new Date().toLocaleDateString('ar-EG')} | إجمالي ${students.length} طالب | ${attendance.length} سجل حضور</p>
+      </div>
+      <div class="summary">
+        <div class="card"><div class="val green">${totalRevenue.toLocaleString()}</div><div class="lbl">إجمالي الإيرادات (ج.م)</div></div>
+        <div class="card"><div class="val red">${totalExpenses.toLocaleString()}</div><div class="lbl">إجمالي المصروفات (ج.م)</div></div>
+        <div class="card"><div class="val purple">${totalTeacherPay.toLocaleString()}</div><div class="lbl">مرتبات المدرسين (ج.م)</div></div>
+        <div class="card"><div class="val ${netProfit >= 0 ? 'green' : 'red'}">${netProfit.toLocaleString()}</div><div class="lbl">صافي الربح (ج.م)</div></div>
+      </div>
+      <section>
+        <h2>💰 سجل المدفوعات (${payments.length} دفعة)</h2>
+        <table><thead><tr><th>#</th><th>الطالب</th><th>المبلغ</th><th>الشهر</th><th>التاريخ</th></tr></thead><tbody>${payRows || '<tr><td colspan="5" style="text-align:center;padding:16px;color:#94a3b8">لا توجد مدفوعات</td></tr>'}</tbody></table>
+        ${payments.length > 100 ? '<p style="font-size:11px;color:#94a3b8;margin-top:8px">* يعرض أحدث 100 سجل فقط</p>' : ''}
+      </section>
+      <section>
+        <h2>🧾 سجل المصروفات (${expenses.length} مصروف)</h2>
+        <table><thead><tr><th>#</th><th>البيان</th><th>المبلغ</th><th>الفئة</th><th>التاريخ</th></tr></thead><tbody>${expRows || '<tr><td colspan="5" style="text-align:center;padding:16px;color:#94a3b8">لا توجد مصروفات</td></tr>'}</tbody></table>
+      </section>
+      <section>
+        <h2>👨‍🏫 مرتبات المدرسين (${teacherPayments.length} مدفوعة)</h2>
+        <table><thead><tr><th>#</th><th>المدرس</th><th>المبلغ</th><th>الشهر</th></tr></thead><tbody>${teacherRows || '<tr><td colspan="4" style="text-align:center;padding:16px;color:#94a3b8">لا توجد مرتبات</td></tr>'}</tbody></table>
+      </section>
+      <div class="footer">تم إنشاء هذا التقرير تلقائياً من نظام إدارة السنتر قبل مسح البيانات</div>
+    </body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 600);
+  };
+
+  const executeClearData = () => {
+    setClearStep('generating');
+    // Generate PDF report first
+    generateFinancialPDF();
+    // Wait a moment for the print dialog, then clear data
+    setTimeout(() => {
+      // Save current user credentials before clearing
+      const currentUser = localStorage.getItem('center_current_user');
+      const users = localStorage.getItem('center_users');
+      const settings = localStorage.getItem('center_settings');
+      // Clear all operational data keys
+      const dataKeys = [
+        'center_students', 'center_groups', 'center_attendance',
+        'center_payments', 'center_exams', 'center_exam_results',
+        'center_messages', 'center_teachers', 'center_expenses',
+        'center_audit_logs', 'center_subscriptions', 'center_academic_years',
+        'center_teacher_payments', 'center_enrollments',
+      ];
+      dataKeys.forEach(key => localStorage.removeItem(key));
+      // Restore user session so user stays logged in
+      if (currentUser) localStorage.setItem('center_current_user', currentUser);
+      if (users) localStorage.setItem('center_users', users);
+      if (settings) localStorage.setItem('center_settings', settings);
+      setClearStep('done');
+      setTimeout(() => {
+        setShowClearModal(false);
         window.location.reload();
-      }
-    }
+      }, 1500);
+    }, 1000);
   };
 
   const getActionIcon = (action: string) => {
@@ -371,6 +480,68 @@ export default function Settings({ onPageChange }: SettingsProps) {
           <RefreshCw size={16} /> مسح جميع البيانات
         </button>
       </div>
+
+      {/* Clear Data Confirmation Modal */}
+      {showClearModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => clearStep === 'confirm' && setShowClearModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+            {clearStep === 'confirm' && (
+              <>
+                <div className="bg-red-600 rounded-t-2xl p-5 text-white text-center">
+                  <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <AlertTriangle size={32} className="text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold">مسح جميع البيانات</h3>
+                  <p className="text-red-100 text-sm mt-1">هذا الإجراء لا يمكن التراجع عنه</p>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm">
+                    <p className="font-bold text-amber-800 mb-2">⚠️ سيتم مسح:</p>
+                    <ul className="space-y-1 text-amber-700">
+                      <li>• جميع بيانات الطلاب والمجموعات</li>
+                      <li>• سجلات الحضور والغياب</li>
+                      <li>• المدفوعات والمصروفات</li>
+                      <li>• بيانات المدرسين ومرتباتهم</li>
+                      <li>• الامتحانات والنتائج</li>
+                    </ul>
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm">
+                    <p className="font-bold text-green-800 mb-1">✅ سيتم حفظه تلقائياً:</p>
+                    <p className="text-green-700">📄 تقرير PDF مالي شامل (مدفوعات + مصروفات + مرتبات)</p>
+                    <p className="text-green-700 mt-1">🔐 بيانات تسجيل الدخول الخاصة بك</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={executeClearData}
+                      className="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition flex items-center justify-center gap-2">
+                      <RefreshCw size={16} /> تأكيد المسح وتنزيل PDF
+                    </button>
+                    <button onClick={() => setShowClearModal(false)}
+                      className="px-5 py-3 bg-gray-100 text-gray-600 rounded-xl font-medium hover:bg-gray-200 transition">
+                      إلغاء
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+            {clearStep === 'generating' && (
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
+                <h3 className="text-lg font-bold text-gray-800">جاري إنشاء التقرير...</h3>
+                <p className="text-sm text-gray-500 mt-2">تنزيل PDF المالي ثم مسح البيانات</p>
+              </div>
+            )}
+            {clearStep === 'done' && (
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle size={32} className="text-green-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">تم المسح بنجاح</h3>
+                <p className="text-sm text-gray-500 mt-2">جاري إعادة التشغيل...</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
