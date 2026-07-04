@@ -354,10 +354,6 @@ export default function Students() {
               <span class="val">${student.grade || '—'}</span>
             </div>
             <div class="cf-row">
-              <span class="lbl">المجموعة:</span>
-              <span class="val">${groupName}</span>
-            </div>
-            <div class="cf-row">
               <span class="lbl">الهاتف:</span>
               <span class="val" style="direction:ltr">${student.phone || '—'}</span>
             </div>
@@ -373,7 +369,7 @@ export default function Students() {
         </div>
 
         <div class="cf-footer">
-          <span class="cf-id">ID: ${student.id.slice(0, 8).toUpperCase()}</span>
+          <span class="cf-id">#${student.id.slice(0, 6).toUpperCase()}</span>
           <span class="cf-status">✓ طالب نشط</span>
         </div>
       </div>
@@ -757,7 +753,7 @@ export default function Students() {
             {qrData && <img src={qrData} alt="QR Code" className="mx-auto mb-4" />}
             <h4 className="text-xl font-bold text-gray-800">{qrStudent.name}</h4>
             <p className="text-sm text-gray-500 mt-1">{qrStudent.grade}</p>
-            <p className="text-xs text-gray-400 mt-1">ID: {qrStudent.id}</p>
+            <p className="text-xs text-gray-400 mt-1">رقم: {qrStudent.id.slice(0, 8).toUpperCase()}</p>
             <div className="mt-4 flex gap-2 justify-center">
               <button onClick={() => printStudentCard(qrStudent)} className="px-4 py-2 bg-primary-600 text-white rounded-xl text-sm hover:bg-primary-700 transition flex items-center gap-1">
                 <Printer size={14} /> طباعة

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getStudents, getGroups, recordQRAttendance, getCurrentUser, getStudentsByGroup, getAttendanceByDate, getGroupsForStudent } from '../store';
+import { getStudents, getGroups, recordQRAttendance, getCurrentUser, getStudentsByGroup, getAttendanceByDate, getGroupsForStudent, getEnrollments } from '../store';
 import { Student, Group } from '../types';
 import { QrCode, Check, AlertTriangle, Scan, Camera, Video, VideoOff } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -181,10 +181,21 @@ export default function QRAttendance() {
 
     // Determine the target group
     let targetGroupId = selectedGroup;
+
+    // Build a comprehensive set of group IDs for this student:
+    // 1. primary group_id stored on student
+    // 2. all enrollments (raw, from localStorage directly)
+    // 3. getGroupsForStudent (which does both above via allGroups filter)
     const studentGroups = getGroupsForStudent(student.id);
+    const rawEnrollments = getEnrollments().filter(e => e.student_id === student.id);
+    const allStudentGroupIds = new Set<string>([
+      student.group_id,
+      ...rawEnrollments.map(e => e.group_id),
+      ...studentGroups.map(g => g.id),
+    ].filter(Boolean));
 
     if (!targetGroupId) {
-      if (studentGroups.length > 1) {
+      if (allStudentGroupIds.size > 1) {
         const multiGroupKey = `multigroup-${student.id}`;
         const lastMultiTime = recentScansRef.current[multiGroupKey] || 0;
         if (now - lastMultiTime < 4000) return;
@@ -202,14 +213,15 @@ export default function QRAttendance() {
       }
       targetGroupId = studentGroups[0]?.id || student.group_id || '';
     } else {
-      const belongs = studentGroups.some(g => g.id === targetGroupId);
+      // Check membership using all sources (group_id + enrollments + getGroupsForStudent)
+      const belongs = allStudentGroupIds.has(targetGroupId);
       if (!belongs) {
         const mismatchKey = `mismatch-${student.id}-${targetGroupId}`;
         const lastMismatchTime = recentScansRef.current[mismatchKey] || 0;
         if (now - lastMismatchTime < 4000) return;
         recentScansRef.current[mismatchKey] = now;
 
-        setScanResult({ success: false, message: 'الطالب ليس من هذه المجموعة' });
+        setScanResult({ success: false, message: 'الطالب ليس مسجلاً في هذه المجموعة' });
         playErrorSound();
         setManualInput('');
         setTimeout(() => setScanResult(null), 3500);
