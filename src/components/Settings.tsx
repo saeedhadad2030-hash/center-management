@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { exportAllData, importAllData, getAuditLogs, getTeachers, getGroups, getSettings, saveSettings, CenterSettings, getStudents, getPayments, getExpenses, getTeacherPayments, getAttendance, clearAllData } from '../store';
 import { AuditLog, Teacher, Group, Page } from '../types';
 import { Download, Upload, Shield, Database, RefreshCw, CheckCircle, AlertTriangle, History, User, Clock, BookOpen, Eye, EyeOff, Layers, UserCheck, Info } from 'lucide-react';
+import { clearNonAdminUsers } from '../services/users';
 
 interface SettingsProps {
   onPageChange?: (page: Page) => void;
@@ -146,8 +147,10 @@ export default function Settings({ onPageChange }: SettingsProps) {
     generateFinancialPDF();
     // Wait for print dialog to open, then clear BOTH localStorage AND Supabase
     setTimeout(async () => {
-      // clearAllData handles: keeping admin users, settings, and clearing Supabase
+      // 1. Clear operational data (localStorage + Supabase tables)
       await clearAllData();
+      // 2. Delete non-admin users from Supabase Auth
+      await clearNonAdminUsers();
       setClearStep('done');
       setTimeout(() => {
         setShowClearModal(false);

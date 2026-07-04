@@ -76,3 +76,19 @@ export async function updateManagedUser(payload: UserPayload & { id: string }): 
 export async function disableManagedUser(id: string): Promise<void> {
   await callUsersFunction<{ ok: boolean }>('users-delete', { id, mode: 'disable' });
 }
+
+/**
+ * Deletes ALL non-admin Supabase Auth users.
+ * Used during "Clear All Data" to remove teacher/employee accounts.
+ */
+export async function clearNonAdminUsers(): Promise<{ deleted: number }> {
+  try {
+    const result = await callUsersFunction<{ ok: boolean; deleted: number }>('users-clear', {});
+    return { deleted: result.deleted || 0 };
+  } catch (err) {
+    // Non-critical: log but don't block the overall clear
+    console.warn('Could not clear non-admin users from Supabase Auth:', err);
+    return { deleted: 0 };
+  }
+}
+
