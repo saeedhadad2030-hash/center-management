@@ -154,7 +154,22 @@ export async function loadSupabaseData(): Promise<void> {
       if (error) {
         console.warn(`Supabase load failed for ${table}`, error);
       } else {
-        writeLocal(key, data || []);
+        if (key === KEYS.auditLogs) {
+          // Merge: keep local-only logs that haven't synced to Supabase yet
+          const localLogs = getItems<{ id: string }>(key);
+          const remoteIds = new Set((data || []).map((r: { id: string }) => r.id));
+          const localOnlyLogs = localLogs.filter(l => !remoteIds.has(l.id));
+          const merged = [...(data || []), ...localOnlyLogs];
+          // Sort by timestamp ascending so reverse() in UI shows newest first
+          merged.sort((a: Record<string, unknown>, b: Record<string, unknown>) =>
+            String(a.timestamp || '').localeCompare(String(b.timestamp || ''))
+          );
+          // Keep max 500
+          if (merged.length > 500) merged.splice(0, merged.length - 500);
+          writeLocal(key, merged);
+        } else {
+          writeLocal(key, data || []);
+        }
       }
     }
 
