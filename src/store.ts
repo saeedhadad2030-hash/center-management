@@ -569,24 +569,12 @@ export function getStudents(): Student[] {
 export function addStudent(student: Omit<Student, 'id' | 'created_at'>): Student {
   const students = getStudents();
   const currentYear = getCurrentAcademicYear();
-  
-  let maxId = 1000;
-  students.forEach(s => {
-    let num = parseInt(s.id, 10);
-    if (isNaN(num) && s.id.startsWith('00000000-0000-0000-0000-')) {
-      num = parseInt(s.id.slice(24), 10);
-    }
-    if (!isNaN(num) && num > maxId) {
-      maxId = num;
-    }
-  });
-  const nextId = String(maxId + 1);
 
   const newStudent: Student = {
     ...student,
     academic_year_id: student.academic_year_id || currentYear?.id || '',
     status: student.status || 'active',
-    id: nextId,
+    id: generateId(),
     created_at: new Date().toISOString(),
   };
   students.push(newStudent);

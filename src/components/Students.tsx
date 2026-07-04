@@ -25,8 +25,7 @@ export default function Students() {
 
   const user = getCurrentUser();
   const isTeacher = user?.role === 'teacher';
-  
-  // Get groups based on role
+
   const allGroups = getGroups();
   const groups = isTeacher && user?.teacher_id ? getTeacherGroups(user.teacher_id) : allGroups;
 
@@ -38,7 +37,6 @@ export default function Students() {
 
   const refresh = useCallback(() => {
     if (isTeacher && user?.teacher_id) {
-      // Teacher sees only students in their groups
       const studentIds = new Set<string>();
       groups.forEach(g => {
         getStudentsByGroup(g.id).forEach(s => studentIds.add(s.id));
@@ -107,15 +105,8 @@ export default function Students() {
     setEditingStudent(null);
     setSelectedGroupIds(defaultGroups);
     setForm({
-      name: '',
-      phone: '',
-      parent_phone: '',
-      grade: '',
-      group_id: defaultGroups[0] || '',
-      notes: '',
-      photo: '',
-      status: 'active',
-      academic_year_id: '',
+      name: '', phone: '', parent_phone: '', grade: '',
+      group_id: defaultGroups[0] || '', notes: '', photo: '', status: 'active', academic_year_id: '',
     });
     setShowForm(true);
   };
@@ -196,36 +187,229 @@ export default function Students() {
   const printStudentCard = async (student: Student) => {
     const data = generateStudentQRData(student.id, student.name);
     const qr = await generateQRCode(data);
-    
+    const groupName = allGroups.find(g => g.id === student.group_id)?.name || '—';
+
     const w = window.open('', '_blank');
     if (!w) return;
-    w.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>كارنيه الطالب</title>
-      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-      <style>* { font-family: 'Cairo', sans-serif; } body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
-      .card { width: 340px; border: 2px solid #1e3a8a; border-radius: 16px; overflow: hidden; }
-      .card-header { background: linear-gradient(135deg, #1e3a8a, #2563eb); color: white; padding: 16px; text-align: center; }
-      .card-body { padding: 16px; text-align: center; }
-      .card-body img { width: 120px; margin: 0 auto 8px; }
-      .info { text-align: right; margin-top: 12px; font-size: 13px; }
-      .info p { margin: 4px 0; }
-      @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-      </style></head><body>
-      <div class="card">
-        <div class="card-header"><h2 style="margin:0;font-size:18px">السنتر التعليمي</h2><p style="margin:4px 0 0;font-size:12px;opacity:0.9">كارنيه الطالب</p></div>
-        <div class="card-body">
-          <img src="${qr}" alt="QR"/>
-          <h3 style="margin:8px 0;color:#1e3a8a">${student.name}</h3>
-          <div class="info">
-            <p>📱 ${student.phone}</p>
-            <p>📚 ${student.grade}</p>
-            <p>👥 ${allGroups.find(g => g.id === student.group_id)?.name || ''}</p>
-            <p>🆔 ${student.id}</p>
+    w.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>كارنيه الطالب - ${student.name}</title>
+      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Cairo', sans-serif;
+          background: #dde4f0;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          min-height: 100vh; padding: 20px; gap: 20px;
+        }
+        .print-hint {
+          color: #555; font-size: 13px; background: #fff;
+          border: 1px solid #ddd; border-radius: 8px; padding: 8px 18px;
+        }
+        /* ═══ FRONT ═══ */
+        .card-front {
+          width: 85.6mm; height: 53.98mm;
+          border-radius: 10px; overflow: hidden;
+          box-shadow: 0 10px 40px rgba(30,58,138,0.22);
+          background: #fff; display: flex; flex-direction: column;
+        }
+        .cf-header {
+          background: linear-gradient(135deg, #0f2060 0%, #1e3a8a 40%, #2563eb 80%, #3b82f6 100%);
+          padding: 5px 10px;
+          display: flex; align-items: center; gap: 7px; flex-shrink: 0;
+          position: relative; overflow: hidden;
+        }
+        .cf-header::before {
+          content: ''; position: absolute;
+          width: 80px; height: 80px; border-radius: 50%;
+          background: rgba(255,255,255,0.06);
+          top: -30px; left: -20px;
+        }
+        .cf-logo {
+          width: 30px; height: 30px; border-radius: 50%;
+          background: rgba(255,255,255,0.18); border: 2px solid rgba(255,255,255,0.5);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 14px; font-weight: 800; color: #fff; flex-shrink: 0; z-index: 1;
+        }
+        .cf-center { flex: 1; text-align: center; z-index: 1; }
+        .cf-center-name { font-size: 11.5px; font-weight: 800; color: #fff; letter-spacing: .5px; }
+        .cf-card-type { font-size: 7.5px; color: rgba(255,255,255,0.75); margin-top: 1px; }
+        .cf-year {
+          background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.35);
+          border-radius: 4px; padding: 2px 7px; font-size: 8px;
+          color: rgba(255,255,255,0.92); white-space: nowrap; flex-shrink: 0; z-index: 1;
+        }
+        .cf-body { flex: 1; display: flex; padding: 7px 10px; gap: 9px; align-items: center; }
+        .cf-photo {
+          width: 48px; height: 48px; border-radius: 50%; object-fit: cover;
+          border: 2.5px solid #1e3a8a; flex-shrink: 0;
+          box-shadow: 0 2px 8px rgba(30,58,138,0.2);
+        }
+        .cf-initials {
+          width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+          background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 21px; font-weight: 800; color: #fff;
+          border: 2.5px solid #1e3a8a;
+          box-shadow: 0 2px 8px rgba(30,58,138,0.2);
+        }
+        .cf-info { flex: 1; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+        .cf-name {
+          font-size: 12px; font-weight: 800; color: #0f2060;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .cf-divider {
+          height: 1.5px;
+          background: linear-gradient(to left, #2563eb, rgba(37,99,235,0.1));
+          border-radius: 1px; margin: 2px 0;
+        }
+        .cf-row { display: flex; align-items: center; gap: 5px; font-size: 8.5px; color: #374151; }
+        .cf-row .lbl { color: #6b7280; font-weight: 600; min-width: 42px; }
+        .cf-row .val { font-weight: 700; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cf-qr { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; gap: 2px; }
+        .cf-qr img { width: 54px; height: 54px; border-radius: 4px; border: 1px solid #e5e7eb; }
+        .cf-qr-lbl { font-size: 6.5px; color: #6b7280; text-align: center; }
+        .cf-footer {
+          background: linear-gradient(135deg, #0f2060 0%, #1e3a8a 50%, #2563eb 100%);
+          padding: 3px 10px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+        }
+        .cf-id { font-size: 6.5px; color: rgba(255,255,255,0.6); direction: ltr; font-family: monospace; letter-spacing: .5px; }
+        .cf-status {
+          font-size: 7px; background: rgba(255,255,255,0.18); color: #fff;
+          border-radius: 3px; padding: 1px 6px; border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        /* ═══ BACK ═══ */
+        .card-back {
+          width: 85.6mm; height: 53.98mm;
+          border-radius: 10px; overflow: hidden;
+          box-shadow: 0 10px 40px rgba(30,58,138,0.22);
+          background: #fff; display: flex; flex-direction: column;
+        }
+        .cb-bar {
+          background: linear-gradient(135deg, #0f2060, #1e3a8a, #2563eb);
+          height: 11px;
+        }
+        .cb-body { flex: 1; padding: 8px 14px; display: flex; gap: 12px; align-items: center; }
+        .cb-rules { flex: 1; }
+        .cb-rules-title {
+          font-size: 8.5px; font-weight: 800; color: #1e3a8a;
+          margin-bottom: 5px; border-bottom: 1.5px solid #dbeafe; padding-bottom: 3px;
+        }
+        .cb-rules ul { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+        .cb-rules ul li { font-size: 7px; color: #374151; padding-right: 10px; position: relative; }
+        .cb-rules ul li::before { content: '▸'; color: #2563eb; position: absolute; right: 0; font-size: 8px; }
+        .cb-contact {
+          background: linear-gradient(135deg, #eff6ff, #dbeafe);
+          border: 1px solid #bfdbfe; border-radius: 8px;
+          padding: 9px 10px; min-width: 78px; text-align: center;
+        }
+        .cb-contact-logo {
+          width: 26px; height: 26px; border-radius: 50%;
+          background: linear-gradient(135deg, #1e3a8a, #2563eb);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 12px; font-weight: 800; color: #fff;
+          margin: 0 auto 5px;
+        }
+        .cb-contact-title { font-size: 7.5px; font-weight: 800; color: #1e3a8a; margin-bottom: 4px; }
+        .cb-contact-item { font-size: 7px; color: #374151; margin-bottom: 3px; }
+        .cb-bar-bottom {
+          background: linear-gradient(135deg, #0f2060, #1e3a8a, #2563eb);
+          height: 11px;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .cb-bar-bottom span { font-size: 5.5px; color: rgba(255,255,255,0.5); letter-spacing: 1px; }
+
+        @media print {
+          body { background: white; padding: 10mm; gap: 8mm; }
+          .print-hint { display: none; }
+          .card-front, .card-back { box-shadow: none; border: .5px solid #ccc; page-break-inside: avoid; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      </style>
+    </head><body>
+      <p class="print-hint">📄 اضغط <strong>Ctrl+P</strong> للطباعة — الوجه الأمامي والخلفي للكارنيه</p>
+
+      <!-- FRONT SIDE -->
+      <div class="card-front">
+        <div class="cf-header">
+          <div class="cf-logo">س</div>
+          <div class="cf-center">
+            <div class="cf-center-name">السنتر التعليمي</div>
+            <div class="cf-card-type">بطاقة هوية الطالب</div>
+          </div>
+          <div class="cf-year">2025 / 2026</div>
+        </div>
+
+        <div class="cf-body">
+          ${student.photo
+            ? `<img src="${student.photo}" class="cf-photo" alt="صورة الطالب" />`
+            : `<div class="cf-initials">${student.name.charAt(0)}</div>`
+          }
+          <div class="cf-info">
+            <div class="cf-name">${student.name}</div>
+            <div class="cf-divider"></div>
+            <div class="cf-row">
+              <span class="lbl">الصف:</span>
+              <span class="val">${student.grade || '—'}</span>
+            </div>
+            <div class="cf-row">
+              <span class="lbl">المجموعة:</span>
+              <span class="val">${groupName}</span>
+            </div>
+            <div class="cf-row">
+              <span class="lbl">الهاتف:</span>
+              <span class="val" style="direction:ltr">${student.phone || '—'}</span>
+            </div>
+            <div class="cf-row">
+              <span class="lbl">ولي الأمر:</span>
+              <span class="val" style="direction:ltr">${student.parent_phone || '—'}</span>
+            </div>
+          </div>
+          <div class="cf-qr">
+            <img src="${qr}" alt="QR Code" />
+            <div class="cf-qr-lbl">امسح للحضور</div>
           </div>
         </div>
-      </div></body></html>`);
+
+        <div class="cf-footer">
+          <span class="cf-id">ID: ${student.id.slice(0, 8).toUpperCase()}</span>
+          <span class="cf-status">✓ طالب نشط</span>
+        </div>
+      </div>
+
+      <!-- BACK SIDE -->
+      <div class="card-back">
+        <div class="cb-bar"></div>
+        <div class="cb-body">
+          <div class="cb-rules">
+            <div class="cb-rules-title">تعليمات هامة</div>
+            <ul>
+              <li>يُمنع إعطاء البطاقة لشخص آخر</li>
+              <li>احتفظ بالبطاقة في مكان آمن دائماً</li>
+              <li>في حال الفقدان أبلغ الإدارة فوراً</li>
+              <li>البطاقة سارية للعام الدراسي المذكور فقط</li>
+              <li>امسح الكود QR لتسجيل الحضور تلقائياً</li>
+            </ul>
+          </div>
+          <div class="cb-contact">
+            <div class="cb-contact-logo">س</div>
+            <div class="cb-contact-title">تواصل معنا</div>
+            <div class="cb-contact-item">📍 عنوان السنتر</div>
+            <div class="cb-contact-item">📞 رقم التواصل</div>
+            <div style="margin-top:7px;font-size:6px;color:#6b7280;border-top:1px solid #bfdbfe;padding-top:4px">
+              ${student.name}
+            </div>
+          </div>
+        </div>
+        <div class="cb-bar-bottom">
+          <span>السنتر التعليمي • بطاقة الطالب • 2025/2026</span>
+        </div>
+      </div>
+    </body></html>`);
     w.document.close();
     w.focus();
-    setTimeout(() => { w.print(); w.close(); }, 500);
+    setTimeout(() => { w.print(); }, 800);
   };
 
   return (
@@ -440,8 +624,7 @@ export default function Students() {
                     {groups.length === 0 && <p className="text-xs text-gray-400 p-2">لا توجد مجموعات متاحة</p>}
                   </div>
                   <p className="text-xs text-gray-400 mt-1">يمكن اختيار أكثر من مجموعة. أول مجموعة تصبح الأساسية.</p>
-                  <select value={form.group_id} onChange={e => setForm({ ...form, group_id: e.target.value })}
-                    className="hidden">
+                  <select value={form.group_id} onChange={e => setForm({ ...form, group_id: e.target.value })} className="hidden">
                     <option value="">اختر المجموعة</option>
                     {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                   </select>
