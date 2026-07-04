@@ -3,6 +3,7 @@ import { getStudents, getGroups, recordQRAttendance, getCurrentUser, getStudents
 import { Student, Group } from '../types';
 import { QrCode, Check, AlertTriangle, Scan, Camera, Video, VideoOff } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
+import { formatStudentCode } from '../utils/qrcode';
 
 export default function QRAttendance() {
   const [selectedGroup, setSelectedGroup] = useState('');
@@ -16,6 +17,7 @@ export default function QRAttendance() {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerRef = useRef<HTMLDivElement>(null);
   const lastScannedRef = useRef<{ id: string; time: number } | null>(null);
+  const recentScansRef = useRef<Record<string, number>>({});
 
   const playSuccessSound = () => {
     try {
@@ -144,93 +146,102 @@ export default function QRAttendance() {
     const cleanData = data.trim();
     if (!cleanData) return;
     const now = Date.now();
-    if (lastScannedRef.current && lastScannedRef.current.id === cleanData && now - lastScannedRef.current.time < 3500) {
-      return; // منع التكرار السريع لنفس الكود خلال 3.5 ثوانٍ
-    }
-    lastScannedRef.current = { id: cleanData, time: now };
 
+    let studentId = '';
     try {
       const parsed = JSON.parse(cleanData);
       if (parsed.type === 'student' && parsed.id) {
-        const student = students.find(s => s.id === parsed.id);
-        if (!student) {
-          setScanResult({ success: false, message: 'الطالب غير موجود في النظام' });
-          playErrorSound();
-          return;
-        }
-        
-        if (!selectedGroup) {
-          const studentGroups = getGroupsForStudent(student.id);
-          if (studentGroups.length > 1) {
-            setScanResult({ success: false, message: 'اختر المجموعة أولا لأن الطالب مسجل في أكثر من مجموعة', studentName: student.name });
-            playErrorSound();
-            return;
-          }
-
-          const groupId = studentGroups[0]?.id || student.group_id;
-          if (groupId) {
-            const result = recordQRAttendance(student.id, groupId);
-            setScanResult({ ...result, studentName: student.name });
-            if (result.success) {
-              setScanCount(c => c + 1);
-              playSuccessSound();
-            } else {
-              playErrorSound();
-            }
-          } else {
-            setScanResult({ success: false, message: 'الطالب غير مسجل في مجموعة' });
-            playErrorSound();
-          }
-        } else {
-          // Check if student belongs to this group (legacy or enrollment)
-          const groupStudents = getStudentsByGroup(selectedGroup);
-          if (!groupStudents.find(s => s.id === student.id)) {
-            setScanResult({ success: false, message: 'الطالب ليس من هذه المجموعة' });
-            playErrorSound();
-            return;
-          }
-          const result = recordQRAttendance(student.id, selectedGroup);
-          setScanResult({ ...result, studentName: student.name });
-          if (result.success) {
-            setScanCount(c => c + 1);
-            playSuccessSound();
-          } else {
-            playErrorSound();
-          }
-        }
-      } else {
-        setScanResult({ success: false, message: 'كود QR غير صالح' });
-        playErrorSound();
+        studentId = parsed.id;
       }
     } catch {
-      // Try to find student by ID directly
-      const student = students.find(s => s.id === cleanData);
-      if (student) {
-        const studentGroups = getGroupsForStudent(student.id);
-        if (!selectedGroup && studentGroups.length > 1) {
-          setScanResult({ success: false, message: 'اختر المجموعة أولا لأن الطالب مسجل في أكثر من مجموعة', studentName: student.name });
-          playErrorSound();
-          return;
-        }
+      // Not JSON
+    }
 
-        const groupId = selectedGroup || studentGroups[0]?.id || student.group_id;
-        if (!groupId) {
-          setScanResult({ success: false, message: 'الطالب غير مسجل في مجموعة' });
-          playErrorSound();
-          return;
-        }
-        const result = recordQRAttendance(student.id, groupId);
-        setScanResult({ ...result, studentName: student.name });
-        if (result.success) {
-          setScanCount(c => c + 1);
-          playSuccessSound();
-        } else {
-          playErrorSound();
-        }
-      } else {
-        setScanResult({ success: false, message: 'كود QR غير صالح' });
+    // Look up student by parsed ID, exact ID, or formatted code
+    const lookupKey = studentId || cleanData;
+    const student = students.find(s => 
+      s.id === lookupKey || 
+      formatStudentCode(s.id) === lookupKey || 
+      s.id === cleanData || 
+      formatStudentCode(s.id) === cleanData
+    );
+
+    if (!student) {
+      const notFoundKey = `notfound-${cleanData}`;
+      const lastNotFoundTime = recentScansRef.current[notFoundKey] || 0;
+      if (now - lastNotFoundTime < 4000) return;
+      recentScansRef.current[notFoundKey] = now;
+
+      setScanResult({ success: false, message: 'الطالب غير موجود في النظام' });
+      playErrorSound();
+      setManualInput('');
+      setTimeout(() => setScanResult(null), 3500);
+      return;
+    }
+
+    // Determine the target group
+    let targetGroupId = selectedGroup;
+    const studentGroups = getGroupsForStudent(student.id);
+
+    if (!targetGroupId) {
+      if (studentGroups.length > 1) {
+        const multiGroupKey = `multigroup-${student.id}`;
+        const lastMultiTime = recentScansRef.current[multiGroupKey] || 0;
+        if (now - lastMultiTime < 4000) return;
+        recentScansRef.current[multiGroupKey] = now;
+
+        setScanResult({ 
+          success: false, 
+          message: 'اختر المجموعة أولا لأن الطالب مسجل في أكثر من مجموعة', 
+          studentName: student.name 
+        });
         playErrorSound();
+        setManualInput('');
+        setTimeout(() => setScanResult(null), 3500);
+        return;
       }
+      targetGroupId = studentGroups[0]?.id || student.group_id || '';
+    } else {
+      const belongs = studentGroups.some(g => g.id === targetGroupId);
+      if (!belongs) {
+        const mismatchKey = `mismatch-${student.id}-${targetGroupId}`;
+        const lastMismatchTime = recentScansRef.current[mismatchKey] || 0;
+        if (now - lastMismatchTime < 4000) return;
+        recentScansRef.current[mismatchKey] = now;
+
+        setScanResult({ success: false, message: 'الطالب ليس من هذه المجموعة' });
+        playErrorSound();
+        setManualInput('');
+        setTimeout(() => setScanResult(null), 3500);
+        return;
+      }
+    }
+
+    if (!targetGroupId) {
+      setScanResult({ success: false, message: 'الطالب غير مسجل في مجموعة' });
+      playErrorSound();
+      setManualInput('');
+      setTimeout(() => setScanResult(null), 3500);
+      return;
+    }
+
+    // Debounce scan for this student in this specific group
+    const scanKey = `${student.id}-${targetGroupId}`;
+    const lastScanTime = recentScansRef.current[scanKey] || 0;
+    if (now - lastScanTime < 6000) {
+      return; // Ignore duplicate scans within 6 seconds
+    }
+    recentScansRef.current[scanKey] = now;
+
+    // Record attendance
+    const result = recordQRAttendance(student.id, targetGroupId);
+    setScanResult({ ...result, studentName: student.name });
+
+    if (result.success) {
+      setScanCount(c => c + 1);
+      playSuccessSound();
+    } else {
+      playErrorSound();
     }
 
     setManualInput('');
