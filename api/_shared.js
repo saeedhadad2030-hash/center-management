@@ -1,25 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-const jsonHeaders = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-};
-
-export function json(statusCode, body) {
-  return {
-    statusCode,
-    headers: jsonHeaders,
-    body: JSON.stringify(body),
-  };
+export function setCorsHeaders(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
 }
 
-export function handleOptions(event) {
-  if (event.httpMethod === 'OPTIONS') {
-    return json(200, { ok: true });
+export function handleOptions(req, res) {
+  setCorsHeaders(res);
+  if (req.method === 'OPTIONS') {
+    res.status(200).json({ ok: true });
+    return true;
   }
-  return null;
+  return false;
 }
 
 export function getAdminClient() {
@@ -40,14 +33,18 @@ export function getAdminClient() {
   });
 }
 
-export async function readJson(event) {
-  try {
-    return event.body ? JSON.parse(event.body) : {};
-  } catch {
-    const error = new Error('Invalid JSON body.');
-    error.statusCode = 400;
-    throw error;
+export async function readBody(req) {
+  if (!req.body) return {};
+  if (typeof req.body === 'string') {
+    try {
+      return JSON.parse(req.body);
+    } catch {
+      const error = new Error('Invalid JSON body.');
+      error.statusCode = 400;
+      throw error;
+    }
   }
+  return req.body;
 }
 
 export function normalizeRole(role) {
@@ -59,14 +56,13 @@ export function normalizeRole(role) {
 
 export function normalizeTeacherId(role, teacherId) {
   if (role !== 'teacher' && role !== 'employee' && role !== 'admin') return null;
-  // Always return null for empty/falsy values to avoid UUID cast errors in Supabase
   if (!teacherId || typeof teacherId !== 'string' || !teacherId.trim()) return null;
   return teacherId.trim();
 }
 
-export async function requireAdmin(event) {
+export async function requireAdmin(req) {
   const admin = getAdminClient();
-  const header = event.headers.authorization || event.headers.Authorization || '';
+  const header = req.headers.authorization || req.headers.Authorization || '';
   const token = header.replace(/^Bearer\s+/i, '').trim();
 
   if (!token) {
@@ -111,8 +107,9 @@ export function toPublicUser(authUser, profile) {
   };
 }
 
-export function errorResponse(error) {
-  return json(error.statusCode || 500, {
+export function errorResponse(res, error) {
+  setCorsHeaders(res);
+  return res.status(error.statusCode || 500).json({
     error: error.message || 'Unexpected server error.',
   });
 }

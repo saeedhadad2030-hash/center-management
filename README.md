@@ -32,33 +32,33 @@ values ('auth-user-id', 'Admin', 'admin', null, true);
 
 For teacher accounts, set `role = 'teacher'` and fill `teacher_id` with the teacher row id.
 
-## Netlify
+## Vercel
 
 Build settings:
 
 ```txt
-Build command: npm run build
-Publish directory: dist
+Framework Preset: Vite
+Build Command: npm run build
+Output Directory: dist
 ```
 
-Add environment variables in Netlify:
+Add environment variables in Vercel Settings -> Environment Variables:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-`netlify.toml` already includes the SPA redirect.
+`vercel.json` already includes the SPA redirect and API route configuration.
 
-`SUPABASE_SERVICE_ROLE_KEY` is used only by Netlify Functions for admin user management. Never put it in frontend code and never prefix it with `VITE_`.
+`SUPABASE_SERVICE_ROLE_KEY` is used only by Vercel Serverless Functions (`api/*`) for admin user management and parent portal. Never put it in frontend code and never prefix it with `VITE_`.
 
 User management from the app uses these functions:
 
-- `/.netlify/functions/users-list`
-- `/.netlify/functions/users-create`
-- `/.netlify/functions/users-update`
-- `/.netlify/functions/users-delete`
-
-For local testing of those functions, run the app through Netlify Dev or deploy to Netlify. Plain `npm run dev` starts Vite only, so `/.netlify/functions/*` will not be available.
+- `/api/users-list`
+- `/api/users-create`
+- `/api/users-update`
+- `/api/users-delete`
+- `/api/parent-portal`
 
 ## Checks
 

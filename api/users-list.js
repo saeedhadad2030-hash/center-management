@@ -1,13 +1,13 @@
-import { errorResponse, handleOptions, json, requireAdmin, toPublicUser } from './_shared.mjs';
+import { errorResponse, handleOptions, requireAdmin, setCorsHeaders, toPublicUser } from './_shared.js';
 
-export async function handler(event) {
-  const options = handleOptions(event);
-  if (options) return options;
+export default async function handler(req, res) {
+  if (handleOptions(req, res)) return;
+  setCorsHeaders(res);
 
   try {
-    if (event.httpMethod !== 'GET') return json(405, { error: 'Method not allowed.' });
+    if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed.' });
 
-    const { admin } = await requireAdmin(event);
+    const { admin } = await requireAdmin(req);
     const { data: usersData, error: usersError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     if (usersError) throw usersError;
 
@@ -19,10 +19,10 @@ export async function handler(event) {
     if (profilesError) throw profilesError;
 
     const profileById = new Map((profiles || []).map(profile => [profile.id, profile]));
-    return json(200, {
+    return res.status(200).json({
       users: usersData.users.map(user => toPublicUser(user, profileById.get(user.id))),
     });
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(res, error);
   }
 }

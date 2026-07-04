@@ -40,7 +40,7 @@ export default function ParentPortal() {
     setError('');
 
     try {
-      const response = await fetch('/.netlify/functions/parent-portal', {
+      const response = await fetch('/api/parent-portal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone }),

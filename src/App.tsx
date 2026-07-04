@@ -140,7 +140,7 @@ export default function App() {
   if (currentPage === 'parent-portal') {
     return (
       <div>
-        <button 
+        <button
           onClick={() => setCurrentPage('dashboard')}
           className="fixed top-4 left-4 z-50 px-4 py-2 bg-white shadow-lg rounded-xl text-sm font-medium hover:bg-gray-50 transition"
         >
@@ -263,7 +263,7 @@ export default function App() {
           user={user}
           onLogout={handleLogout}
           collapsed={false}
-          onToggle={() => {}}
+          onToggle={() => { }}
           isMobile
           onClose={closeMobileMenu}
         />

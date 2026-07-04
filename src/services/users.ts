@@ -36,7 +36,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 
 async function callUsersFunction<T>(name: string, body?: unknown): Promise<T> {
   const headers = await getAuthHeaders();
-  const response = await fetch(`/.netlify/functions/${name}`, {
+  const response = await fetch(`/api/${name}`, {
     method: body ? 'POST' : 'GET',
     headers,
     body: body ? JSON.stringify(body) : undefined,
@@ -44,7 +44,7 @@ async function callUsersFunction<T>(name: string, body?: unknown): Promise<T> {
 
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
-    throw new Error('خدمة إدارة المستخدمين غير متاحة الآن. تأكد من إعداد النشر ثم حاول مرة أخرى.');
+    throw new Error('خدمة إدارة المستخدمين غير متاحة الآن. تأكد من إعداد النشر على Vercel ثم حاول مرة أخرى.');
   }
 
   const payload = await response.json().catch(() => ({}));

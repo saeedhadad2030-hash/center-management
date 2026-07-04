@@ -1,21 +1,21 @@
-import { errorResponse, handleOptions, json, normalizeRole, normalizeTeacherId, readJson, requireAdmin, toPublicUser } from './_shared.mjs';
+import { errorResponse, handleOptions, normalizeRole, normalizeTeacherId, readBody, requireAdmin, setCorsHeaders, toPublicUser } from './_shared.js';
 
-export async function handler(event) {
-  const options = handleOptions(event);
-  if (options) return options;
+export default async function handler(req, res) {
+  if (handleOptions(req, res)) return;
+  setCorsHeaders(res);
 
   try {
-    if (event.httpMethod !== 'POST' && event.httpMethod !== 'PUT') return json(405, { error: 'Method not allowed.' });
+    if (req.method !== 'POST' && req.method !== 'PUT') return res.status(405).json({ error: 'Method not allowed.' });
 
-    const { admin, authUser } = await requireAdmin(event);
-    const body = await readJson(event);
+    const { admin, authUser } = await requireAdmin(req);
+    const body = await readBody(req);
     const id = String(body.id || '').trim();
-    if (!id) return json(400, { error: 'User id is required.' });
+    if (!id) return res.status(400).json({ error: 'User id is required.' });
 
     const role = normalizeRole(body.role || 'employee');
     const isActive = body.is_active !== false;
     if (id === authUser.id && (!isActive || role !== 'admin')) {
-      return json(400, { error: 'You cannot disable yourself or remove your own admin role.' });
+      return res.status(400).json({ error: 'You cannot disable yourself or remove your own admin role.' });
     }
 
     const authUpdates = {};
@@ -41,7 +41,7 @@ export async function handler(event) {
       is_active: isActive,
     };
 
-    if (!profileUpdates.name) return json(400, { error: 'Name is required.' });
+    if (!profileUpdates.name) return res.status(400).json({ error: 'Name is required.' });
 
     const { data: profileData, error: profileError } = await admin
       .from('profiles')
@@ -51,8 +51,8 @@ export async function handler(event) {
       .single();
     if (profileError) throw profileError;
 
-    return json(200, { user: toPublicUser(updatedAuthUser, profileData) });
+    return res.status(200).json({ user: toPublicUser(updatedAuthUser, profileData) });
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(res, error);
   }
 }

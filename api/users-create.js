@@ -1,14 +1,14 @@
-import { errorResponse, handleOptions, json, normalizeRole, normalizeTeacherId, readJson, requireAdmin, toPublicUser } from './_shared.mjs';
+import { errorResponse, handleOptions, normalizeRole, normalizeTeacherId, readBody, requireAdmin, setCorsHeaders, toPublicUser } from './_shared.js';
 
-export async function handler(event) {
-  const options = handleOptions(event);
-  if (options) return options;
+export default async function handler(req, res) {
+  if (handleOptions(req, res)) return;
+  setCorsHeaders(res);
 
   try {
-    if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed.' });
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
-    const { admin } = await requireAdmin(event);
-    const body = await readJson(event);
+    const { admin } = await requireAdmin(req);
+    const body = await readBody(req);
     const email = String(body.email || '').trim().toLowerCase();
     const password = String(body.password || '');
     const name = String(body.name || '').trim();
@@ -17,7 +17,7 @@ export async function handler(event) {
     const isActive = body.is_active !== false;
 
     if (!email || !password || !name) {
-      return json(400, { error: 'Name, email, and password are required.' });
+      return res.status(400).json({ error: 'Name, email, and password are required.' });
     }
 
     const { data: createData, error: createError } = await admin.auth.admin.createUser({
@@ -47,8 +47,8 @@ export async function handler(event) {
       throw profileError;
     }
 
-    return json(200, { user: toPublicUser(createData.user, profileData) });
+    return res.status(200).json({ user: toPublicUser(createData.user, profileData) });
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(res, error);
   }
 }

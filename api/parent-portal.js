@@ -1,4 +1,4 @@
-import { errorResponse, getAdminClient, handleOptions, json, readJson } from './_shared.mjs';
+import { errorResponse, getAdminClient, handleOptions, readBody, setCorsHeaders } from './_shared.js';
 
 function phoneVariants(value) {
   const raw = String(value || '').trim();
@@ -16,16 +16,16 @@ function phoneVariants(value) {
   return Array.from(variants).filter(Boolean);
 }
 
-export async function handler(event) {
-  const options = handleOptions(event);
-  if (options) return options;
+export default async function handler(req, res) {
+  if (handleOptions(req, res)) return;
+  setCorsHeaders(res);
 
   try {
-    if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed.' });
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
-    const body = await readJson(event);
+    const body = await readBody(req);
     const phones = phoneVariants(body.phone);
-    if (phones.length === 0) return json(400, { error: 'Phone is required.' });
+    if (phones.length === 0) return res.status(400).json({ error: 'Phone is required.' });
 
     const admin = getAdminClient();
     const { data: students, error: studentsError } = await admin
@@ -36,7 +36,7 @@ export async function handler(event) {
     if (studentsError) throw studentsError;
 
     if (!students || students.length === 0) {
-      return json(200, {
+      return res.status(200).json({
         students: [],
         groups: [],
         enrollments: [],
@@ -86,7 +86,7 @@ export async function handler(event) {
       : { data: [], error: null };
     if (examsError) throw examsError;
 
-    return json(200, {
+    return res.status(200).json({
       students,
       groups: groups || [],
       enrollments: enrollmentsResult.data || [],
@@ -97,6 +97,6 @@ export async function handler(event) {
       subscriptions: subscriptionsResult.data || [],
     });
   } catch (error) {
-    return errorResponse(error);
+    return errorResponse(res, error);
   }
 }
