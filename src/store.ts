@@ -1058,3 +1058,50 @@ export function importAllData(jsonString: string): boolean {
     return false;
   }
 }
+
+/**
+ * Clears ALL operational data from both localStorage AND Supabase.
+ * Keeps: center_users, center_current_user, center_settings
+ */
+export async function clearAllData(): Promise<void> {
+  // 1. Clear localStorage operational keys
+  const dataKeys = [
+    KEYS.students, KEYS.groups, KEYS.attendance,
+    KEYS.payments, KEYS.exams, KEYS.examResults,
+    KEYS.messages, KEYS.teachers, KEYS.expenses,
+    KEYS.auditLogs, KEYS.subscriptions, KEYS.academicYears,
+    KEYS.teacherPayments, KEYS.enrollments,
+  ];
+  dataKeys.forEach(key => localStorage.removeItem(key));
+
+  // 2. Also delete from Supabase (ordered: children before parents to respect FK constraints)
+  if (isSupabaseConfigured && supabase) {
+    const tablesToClear = [
+      // Children first
+      'enrollments',
+      'attendance',
+      'exam_results',
+      'payments',
+      'subscriptions',
+      'teacher_payments',
+      'exams',
+      'expenses',
+      'audit_logs',
+      'messages',
+      // Parents
+      'students',
+      'groups',
+      'teachers',
+      'academic_years',
+    ];
+    for (const table of tablesToClear) {
+      try {
+        // Delete all rows — using .not('id','is',null) which matches every row
+        await supabase.from(table).delete().not('id', 'is', null);
+      } catch (err) {
+        console.warn(`Could not clear Supabase table "${table}":`, err);
+      }
+    }
+  }
+}
+

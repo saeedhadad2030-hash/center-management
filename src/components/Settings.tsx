@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { exportAllData, importAllData, getAuditLogs, getTeachers, getGroups, getSettings, saveSettings, CenterSettings, getStudents, getPayments, getExpenses, getTeacherPayments, getAttendance } from '../store';
+import { exportAllData, importAllData, getAuditLogs, getTeachers, getGroups, getSettings, saveSettings, CenterSettings, getStudents, getPayments, getExpenses, getTeacherPayments, getAttendance, clearAllData } from '../store';
 import { AuditLog, Teacher, Group, Page } from '../types';
 import { Download, Upload, Shield, Database, RefreshCw, CheckCircle, AlertTriangle, History, User, Clock, BookOpen, Eye, EyeOff, Layers, UserCheck, Info } from 'lucide-react';
 
@@ -140,29 +140,22 @@ export default function Settings({ onPageChange }: SettingsProps) {
     setTimeout(() => { w.print(); }, 600);
   };
 
-  const executeClearData = () => {
+  const executeClearData = async () => {
     setClearStep('generating');
     // Generate PDF report first
     generateFinancialPDF();
-    // Wait a moment for the print dialog, then clear data
-    setTimeout(() => {
+    // Await a moment for the print dialog, then clear BOTH localStorage AND Supabase
+    setTimeout(async () => {
       // Save current user credentials before clearing
       const currentUser = localStorage.getItem('center_current_user');
       const users = localStorage.getItem('center_users');
-      const settings = localStorage.getItem('center_settings');
-      // Clear all operational data keys
-      const dataKeys = [
-        'center_students', 'center_groups', 'center_attendance',
-        'center_payments', 'center_exams', 'center_exam_results',
-        'center_messages', 'center_teachers', 'center_expenses',
-        'center_audit_logs', 'center_subscriptions', 'center_academic_years',
-        'center_teacher_payments', 'center_enrollments',
-      ];
-      dataKeys.forEach(key => localStorage.removeItem(key));
-      // Restore user session so user stays logged in
+      const settingsData = localStorage.getItem('center_settings');
+      // Clear all data (localStorage + Supabase)
+      await clearAllData();
+      // Restore user session
       if (currentUser) localStorage.setItem('center_current_user', currentUser);
       if (users) localStorage.setItem('center_users', users);
-      if (settings) localStorage.setItem('center_settings', settings);
+      if (settingsData) localStorage.setItem('center_settings', settingsData);
       setClearStep('done');
       setTimeout(() => {
         setShowClearModal(false);
