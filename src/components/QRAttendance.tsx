@@ -15,6 +15,45 @@ export default function QRAttendance() {
   const inputRef = useRef<HTMLInputElement>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerRef = useRef<HTMLDivElement>(null);
+  const lastScannedRef = useRef<{ id: string; time: number } | null>(null);
+
+  const playSuccessSound = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1); // A5
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } catch (e) {
+      console.error('Audio error:', e);
+    }
+  };
+
+  const playErrorSound = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, ctx.currentTime);
+      osc.frequency.setValueAtTime(180, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch (e) {
+      console.error('Audio error:', e);
+    }
+  };
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -102,12 +141,21 @@ export default function QRAttendance() {
   }, []);
 
   const handleScan = (data: string) => {
+    const cleanData = data.trim();
+    if (!cleanData) return;
+    const now = Date.now();
+    if (lastScannedRef.current && lastScannedRef.current.id === cleanData && now - lastScannedRef.current.time < 3500) {
+      return; // منع التكرار السريع لنفس الكود خلال 3.5 ثوانٍ
+    }
+    lastScannedRef.current = { id: cleanData, time: now };
+
     try {
-      const parsed = JSON.parse(data);
+      const parsed = JSON.parse(cleanData);
       if (parsed.type === 'student' && parsed.id) {
         const student = students.find(s => s.id === parsed.id);
         if (!student) {
           setScanResult({ success: false, message: 'الطالب غير موجود في النظام' });
+          playErrorSound();
           return;
         }
         
@@ -115,6 +163,7 @@ export default function QRAttendance() {
           const studentGroups = getGroupsForStudent(student.id);
           if (studentGroups.length > 1) {
             setScanResult({ success: false, message: 'اختر المجموعة أولا لأن الطالب مسجل في أكثر من مجموعة', studentName: student.name });
+            playErrorSound();
             return;
           }
 
@@ -122,49 +171,70 @@ export default function QRAttendance() {
           if (groupId) {
             const result = recordQRAttendance(student.id, groupId);
             setScanResult({ ...result, studentName: student.name });
-            if (result.success) setScanCount(c => c + 1);
+            if (result.success) {
+              setScanCount(c => c + 1);
+              playSuccessSound();
+            } else {
+              playErrorSound();
+            }
           } else {
             setScanResult({ success: false, message: 'الطالب غير مسجل في مجموعة' });
+            playErrorSound();
           }
         } else {
           // Check if student belongs to this group (legacy or enrollment)
           const groupStudents = getStudentsByGroup(selectedGroup);
           if (!groupStudents.find(s => s.id === student.id)) {
             setScanResult({ success: false, message: 'الطالب ليس من هذه المجموعة' });
+            playErrorSound();
             return;
           }
           const result = recordQRAttendance(student.id, selectedGroup);
           setScanResult({ ...result, studentName: student.name });
-          if (result.success) setScanCount(c => c + 1);
+          if (result.success) {
+            setScanCount(c => c + 1);
+            playSuccessSound();
+          } else {
+            playErrorSound();
+          }
         }
       } else {
         setScanResult({ success: false, message: 'كود QR غير صالح' });
+        playErrorSound();
       }
     } catch {
       // Try to find student by ID directly
-      const student = students.find(s => s.id === data.trim());
+      const student = students.find(s => s.id === cleanData);
       if (student) {
         const studentGroups = getGroupsForStudent(student.id);
         if (!selectedGroup && studentGroups.length > 1) {
           setScanResult({ success: false, message: 'اختر المجموعة أولا لأن الطالب مسجل في أكثر من مجموعة', studentName: student.name });
+          playErrorSound();
           return;
         }
 
         const groupId = selectedGroup || studentGroups[0]?.id || student.group_id;
         if (!groupId) {
           setScanResult({ success: false, message: 'الطالب غير مسجل في مجموعة' });
+          playErrorSound();
           return;
         }
         const result = recordQRAttendance(student.id, groupId);
         setScanResult({ ...result, studentName: student.name });
-        if (result.success) setScanCount(c => c + 1);
+        if (result.success) {
+          setScanCount(c => c + 1);
+          playSuccessSound();
+        } else {
+          playErrorSound();
+        }
       } else {
         setScanResult({ success: false, message: 'كود QR غير صالح' });
+        playErrorSound();
       }
     }
 
     setManualInput('');
-    setTimeout(() => setScanResult(null), 3000);
+    setTimeout(() => setScanResult(null), 3500);
   };
 
   const handleManualSubmit = (e: React.FormEvent) => {

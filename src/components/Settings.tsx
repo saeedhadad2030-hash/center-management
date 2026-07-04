@@ -371,29 +371,6 @@ export default function Settings({ onPageChange }: SettingsProps) {
           <RefreshCw size={16} /> مسح جميع البيانات
         </button>
       </div>
-
-      {/* System Info */}
-      <div className="bg-white rounded-2xl shadow-sm p-6">
-        <h3 className="font-bold text-gray-800 mb-4">معلومات النظام</h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="text-gray-500">الإصدار</p>
-            <p className="font-medium">2.0.0</p>
-          </div>
-          <div>
-            <p className="text-gray-500">قاعدة البيانات</p>
-            <p className="font-medium">Supabase Postgres</p>
-          </div>
-          <div>
-            <p className="text-gray-500">المتصفح</p>
-            <p className="font-medium text-xs">{navigator.userAgent.split(' ').slice(-2).join(' ')}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">حجم البيانات</p>
-            <p className="font-medium">تدار من Supabase</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
