@@ -1076,20 +1076,41 @@ export function importAllData(jsonString: string): boolean {
 
 /**
  * Clears ALL operational data from both localStorage AND Supabase.
- * Keeps: center_users, center_current_user, center_settings
+ * Keeps: admin user(s) only, center_settings
  */
 export async function clearAllData(): Promise<void> {
-  // 1. Clear localStorage operational keys
+  // 1. Save admin-only users before clearing
+  const allUsers = getItems<User>(KEYS.users);
+  const adminUsers = allUsers.filter(u => u.role === 'admin');
+  const currentUser = getCurrentUser();
+  // If current user is admin, keep them; otherwise clear the session
+  const keepCurrentUser = currentUser?.role === 'admin' ? currentUser : adminUsers[0] || null;
+  const settingsData = localStorage.getItem(KEYS.settings);
+
+  // 2. Clear ALL localStorage keys including users
   const dataKeys = [
     KEYS.students, KEYS.groups, KEYS.attendance,
     KEYS.payments, KEYS.exams, KEYS.examResults,
     KEYS.messages, KEYS.teachers, KEYS.expenses,
     KEYS.auditLogs, KEYS.subscriptions, KEYS.academicYears,
     KEYS.teacherPayments, KEYS.enrollments,
+    KEYS.users, KEYS.currentUser,
   ];
   dataKeys.forEach(key => localStorage.removeItem(key));
 
-  // 2. Also delete from Supabase (ordered: children before parents to respect FK constraints)
+  // 3. Restore admin users only
+  if (adminUsers.length > 0) {
+    localStorage.setItem(KEYS.users, JSON.stringify(adminUsers));
+  }
+  if (keepCurrentUser) {
+    localStorage.setItem(KEYS.currentUser, JSON.stringify(keepCurrentUser));
+    currentUserCache = keepCurrentUser;
+  }
+  if (settingsData) {
+    localStorage.setItem(KEYS.settings, settingsData);
+  }
+
+  // 4. Also delete from Supabase (ordered: children before parents to respect FK constraints)
   if (isSupabaseConfigured && supabase) {
     const tablesToClear = [
       // Children first

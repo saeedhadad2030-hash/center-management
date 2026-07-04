@@ -144,18 +144,10 @@ export default function Settings({ onPageChange }: SettingsProps) {
     setClearStep('generating');
     // Generate PDF report first
     generateFinancialPDF();
-    // Await a moment for the print dialog, then clear BOTH localStorage AND Supabase
+    // Wait for print dialog to open, then clear BOTH localStorage AND Supabase
     setTimeout(async () => {
-      // Save current user credentials before clearing
-      const currentUser = localStorage.getItem('center_current_user');
-      const users = localStorage.getItem('center_users');
-      const settingsData = localStorage.getItem('center_settings');
-      // Clear all data (localStorage + Supabase)
+      // clearAllData handles: keeping admin users, settings, and clearing Supabase
       await clearAllData();
-      // Restore user session
-      if (currentUser) localStorage.setItem('center_current_user', currentUser);
-      if (users) localStorage.setItem('center_users', users);
-      if (settingsData) localStorage.setItem('center_settings', settingsData);
       setClearStep('done');
       setTimeout(() => {
         setShowClearModal(false);
@@ -163,6 +155,7 @@ export default function Settings({ onPageChange }: SettingsProps) {
       }, 1500);
     }, 1000);
   };
+
 
   const getActionIcon = (action: string) => {
     if (action.includes('إضافة') || action.includes('إنشاء')) return '➕';
@@ -496,12 +489,14 @@ export default function Settings({ onPageChange }: SettingsProps) {
                       <li>• المدفوعات والمصروفات</li>
                       <li>• بيانات المدرسين ومرتباتهم</li>
                       <li>• الامتحانات والنتائج</li>
+                      <li>• المستخدمين (مدرسين وموظفين)</li>
                     </ul>
                   </div>
                   <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm">
                     <p className="font-bold text-green-800 mb-1">✅ سيتم حفظه تلقائياً:</p>
                     <p className="text-green-700">📄 تقرير PDF مالي شامل (مدفوعات + مصروفات + مرتبات)</p>
-                    <p className="text-green-700 mt-1">🔐 بيانات تسجيل الدخول الخاصة بك</p>
+                    <p className="text-green-700 mt-1">🔐 حساب الأدمن فقط</p>
+                    <p className="text-green-700 mt-1">⚙️ إعدادات النظام</p>
                   </div>
                   <div className="flex gap-3">
                     <button onClick={executeClearData}
